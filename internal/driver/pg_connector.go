@@ -4,18 +4,19 @@
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package pg
+package driver
 
 import (
+	"context"
 	"database/sql/driver"
-	"github.com/blusewang/pg/internal/conn"
 )
 
-type Driver struct{}
+type PgConnector struct{}
 
-func (d *Driver) Open(name string) (_ driver.Conn, err error) {
+func (c *PgConnector) Connect(context.Context) (driver.Conn, error) {
+	return &pgConn{}, nil
+}
 
-	c, err := conn.Open(name)
-
-	return c, err
+func (c *PgConnector) Driver() driver.Driver {
+	return &PgDriver{}
 }

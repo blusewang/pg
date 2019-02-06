@@ -4,4 +4,13 @@
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package conn
+package pg
+
+import (
+	"database/sql"
+	"github.com/blusewang/pg/internal/driver"
+)
+
+func init() {
+	sql.Register("postgres", &driver.PgDriver{})
+}

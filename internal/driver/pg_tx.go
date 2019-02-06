@@ -4,10 +4,14 @@
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package pg
+package driver
 
-import "database/sql"
+type PgTx struct {
+}
 
-func init() {
-	sql.Register("postgres", &Driver{})
+func (t *PgTx) Commit() error {
+	return nil
+}
+func (t *PgTx) Rollback() error {
+	return nil
 }
