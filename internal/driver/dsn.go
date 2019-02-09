@@ -25,7 +25,8 @@ type DataSourceName struct {
 }
 
 func ParseDSN(connectStr string) (dsn *DataSourceName, err error) {
-	dsn = &DataSourceName{}
+	dsn = new(DataSourceName)
+	dsn.setDefault()
 	if strings.Contains(connectStr, "://") {
 		err = dsn.parseURI(connectStr)
 	} else {
@@ -61,15 +62,14 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 			p[strings.TrimSpace(pair[0])] = strings.TrimSpace(pair[1])
 		}
 	}
-	dsn.setDefault()
 	if host, has := p["host"]; has {
 		dsn.host = host
 	}
 	if port, has := p["port"]; has {
 		dsn.port = port
 	}
-	if user, has := p["user"]; has {
-		dsn.Parameter["user"] = user
+	if u, has := p["user"]; has {
+		dsn.Parameter["user"] = u
 	}
 	if password, has := p["password"]; has {
 		dsn.password = password
@@ -102,7 +102,6 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 		err = fmt.Errorf("invalid connection protocol: %s", u.Scheme)
 		return
 	}
-	dsn.setDefault()
 	if u.Hostname() != "" {
 		dsn.host = u.Hostname()
 	}
