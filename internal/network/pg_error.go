@@ -8,43 +8,29 @@ package network
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type PgError struct {
-	Severity string `json:"severity"`
-	Text     string `json:"text"`
-	Code     int    `json:"code"`
-	Message  string `json:"message"`
-	File     string `json:"file"`
-	Line     int    `json:"line"`
-	Routine  string `json:"routine"`
+	Severity         string `json:"severity"`
+	Text             string `json:"text"`
+	Code             int    `json:"code"`
+	Message          string `json:"message"`
+	Detail           string `json:"detail"`
+	Hint             string `json:"hint"`
+	Position         int    `json:"position"`
+	InternalPosition int    `json:"internal_position"`
+	InternalQuery    string `json:"internal_query"`
+	Where            string `json:"where"`
+	Schema           string `json:"schema"`
+	Table            string `json:"table"`
+	Column           string `json:"column"`
+	DataType         string `json:"data_type"`
+	Constraint       string `json:"constraint"`
+	File             string `json:"file"`
+	Line             int    `json:"line"`
+	Routine          string `json:"routine"`
 }
 
 func (e *PgError) Error() string {
 	return fmt.Sprintf("pg %v %v", e.Severity, e.Message)
-}
-
-func ParsePgError(buf *ReadBuffer) (err *PgError) {
-	err = &PgError{}
-	s := " "
-	for ; s != ""; s = buf.string() {
-		switch s[0] {
-		case 'S':
-			err.Severity = s[1:]
-		case 'V':
-			err.Text = s[1:]
-		case 'C':
-			err.Code, _ = strconv.Atoi(s[1:])
-		case 'M':
-			err.Message = s[1:]
-		case 'F':
-			err.File = s[1:]
-		case 'L':
-			err.Line, _ = strconv.Atoi(s[1:])
-		case 'R':
-			err.Routine = s[1:]
-		}
-	}
-	return
 }

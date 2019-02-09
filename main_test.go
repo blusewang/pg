@@ -7,15 +7,16 @@
 package pg
 
 import (
+	"bytes"
 	"database/sql"
 	"log"
 	"testing"
-	"time"
 )
 
 func TestDriver_Open(t *testing.T) {
-	l, err := time.LoadLocation("PRC")
-	log.Println(l, err)
+	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	log.Println(bytes.TrimLeft([]byte{0, 0, 0, 0, 0, 3, 255}, "\000"))
 
 	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
@@ -23,9 +24,14 @@ func TestDriver_Open(t *testing.T) {
 	}
 	defer db.Close()
 	log.Println("db -> ", db)
-	rows, err := db.Query("select * from bluse")
+	stmt, err := db.Prepare("select * from bluse where id<$1 and id > $2")
 	if err != nil {
 		t.Error(err)
 	}
-	log.Println("rows -> ", rows)
+	log.Println(stmt)
+	rs, err := stmt.Exec(100, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Println("result -> ", rs)
 }

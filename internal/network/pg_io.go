@@ -10,75 +10,123 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
+	"database/sql/driver"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"time"
 )
 
 func NewPgIO() *PgIO {
-	pi := &PgIO{}
-	pi.serverConf = make(map[string]string)
+	pi := new(PgIO)
+	pi.ServerConf = make(map[string]string)
+	pi.IOError = nil
 	return pi
 }
 
 type PgIO struct {
-	net.Conn
+	conn       net.Conn
 	reader     *bufio.Reader
 	txStatus   TransactionStatus
-	serverPid  int
-	serverConf map[string]string
-	backendKey int
+	serverPid  uint32
+	ServerConf map[string]string
+	backendKey uint32
 	location   *time.Location
+	IOError    error
+}
+
+func (pi *PgIO) md5(s []byte) []byte {
+	h := md5.New()
+	h.Write(s)
+	return h.Sum(nil)
+}
+
+func (pi *PgIO) receivePgMsg(sep Identifies) (ms []PgMessage, err error) {
+	for {
+		var msg PgMessage
+
+		id, err := pi.reader.ReadByte()
+		if err != nil {
+			pi.IOError = err
+			return ms, err
+		}
+		msg.Identifies = Identifies(id)
+		msg.Content, err = pi.reader.Peek(4)
+		if err != nil {
+			return ms, err
+		}
+
+		msg.Len = binary.BigEndian.Uint32(msg.Content)
+		msg.Content = make([]byte, msg.Len, msg.Len)
+		_, err = io.ReadFull(pi.reader, msg.Content)
+		if err != nil {
+			return ms, err
+		}
+		msg.Position = 4
+		ms = append(ms, msg)
+		if msg.Identifies == IdentifiesErrorResponse {
+			return ms, msg.ParseError()
+		} else if msg.Identifies == sep {
+			return ms, nil
+		}
+	}
+}
+
+func (pi *PgIO) send(list ...*PgMessage) (err error) {
+	var raw []byte
+	for _, v := range list {
+		raw = append(raw, v.encode()...)
+	}
+	_, pi.IOError = pi.conn.Write(raw)
+	return pi.IOError
 }
 
 func (pi *PgIO) Dial(network, address string, timeout time.Duration) (err error) {
-	pi.Conn, err = net.DialTimeout(network, address, timeout)
+	pi.conn, err = net.DialTimeout(network, address, timeout)
 	if err == nil {
-		pi.reader = bufio.NewReader(pi.Conn)
+		pi.reader = bufio.NewReader(pi.conn)
 	}
 	return
 }
 
 func (pi *PgIO) DialContext(context context.Context, network, address string, timeout time.Duration) (err error) {
 	d := net.Dialer{Timeout: timeout}
-	pi.Conn, err = d.DialContext(context, network, address)
+	pi.conn, err = d.DialContext(context, network, address)
 	if err == nil {
-		pi.reader = bufio.NewReader(pi.Conn)
+		pi.reader = bufio.NewReader(pi.conn)
 	}
 	return
 }
 
 func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
-	var wb WriteBuffer
-	wb.int32(0)
-	wb.int32(196608)
+	bs := NewPgMessage(IdentifiesStartupMessage)
+	bs.addInt32(196608)
 	for k, v := range p {
-		wb.string(k)
-		wb.string(v)
+		bs.addString(k)
+		bs.addString(v)
 	}
-	wb.byte(0)
-	_, err = pi.Write(wb.wrap())
+	bs.addByte(0)
+	_ = bs.encode()
+	_, err = pi.conn.Write(bs.Content)
 	if err != nil {
 		return
 	}
 
-	for {
-		t, reader, err := pi.receive()
-		if err != nil {
-			return err
-		}
-		switch t {
-		case 'R':
-			err = pi.auth(reader, p["user"], pwd)
+	ms, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+	if err != nil {
+		return err
+	}
+	for _, m := range ms {
+		switch m.Identifies {
+		case IdentifiesAuth:
+			err = pi.auth(m, p["user"], pwd)
 			if err != nil {
 				return err
 			}
-		case 'S':
-			k := reader.string()
-			v := reader.string()
+		case IdentifiesParameterStatus:
+			k := m.string()
+			v := m.string()
 			if k == "TimeZone" {
 				pi.location, err = time.LoadLocation(v)
 				if err != nil {
@@ -86,115 +134,160 @@ func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
 					pi.location = nil
 				}
 			}
-			log.Println(string(t), k, v)
-			pi.serverConf[k] = v
-		case 'K':
-			pi.serverPid = reader.int32()
-			pi.backendKey = reader.int32()
-		case 'Z':
-			pi.txStatus = TransactionStatus(reader.byte())
-			return nil
-		case 'E':
-			err = ParsePgError(reader)
-			log.Println(err)
-			return err
-		default:
-			return fmt.Errorf("unknown response for startup: %q,%v", t, reader.string())
-		}
-	}
-}
-
-func (pi *PgIO) auth(reader *ReadBuffer, user, password string) (err error) {
-
-	switch code := reader.int32(); code {
-	case 0:
-		// OK
-		break
-	case 3:
-		// 明文密码
-		msg := pi.newMsgByCommand('p')
-		msg.string(password)
-		_, err = pi.Write(msg.wrap())
-		if err != nil {
-			return err
-		}
-		t, buf, err := pi.receive()
-		if err != nil {
-			return err
-		}
-
-		if t == 'E' {
-			return ParsePgError(buf)
-		}
-
-		if t == 'R' && buf.int32() != 0 {
-			return fmt.Errorf("unexpected authentication response: %q", t)
-		}
-	case 5:
-		// MD5密码
-		msg := pi.newMsgByCommand('p')
-		msg.string("md5" + pi.md5(pi.md5(password+user)+string(reader.next(4))))
-
-		_, err = pi.Write(msg.wrap())
-		if err != nil {
-			return err
-		}
-		t, buf, err := pi.receive()
-		if err != nil {
-			return err
-		}
-
-		if t == 'E' {
-			return ParsePgError(buf)
-		}
-
-		if t == 'R' && buf.int32() != 0 {
-			return fmt.Errorf("unexpected authentication response: %q", t)
+			pi.ServerConf[k] = v
+		case IdentifiesBackendKeyData:
+			pi.serverPid = m.int32()
+			pi.backendKey = m.int32()
+		case IdentifiesReadyForQuery:
+			pi.txStatus = TransactionStatus(m.byte())
 		}
 	}
 	return
 }
 
-func (pi *PgIO) md5(s string) string {
-	h := md5.New()
-	h.Write([]byte(s))
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-func (pi *PgIO) newMsgByCommand(b byte) *WriteBuffer {
-	r := &WriteBuffer{pos: 1}
-	r.byte(b)
-	r.int32(0)
-	return r
-}
-
-func (pi *PgIO) receive() (t byte, buf *ReadBuffer, err error) {
-	for {
-		buf = &ReadBuffer{}
-		t, err = pi.reader.ReadByte()
+func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
+	switch code := msg.int32(); code {
+	case 0:
+		// OK
+		break
+	case 3:
+		// 明文密码
+		pwdMsg := NewPgMessage(IdentifiesPasswordMessage)
+		pwdMsg.addString(password)
+		err = pi.send(pwdMsg)
 		if err != nil {
-			return t, buf, err
+			return err
+		}
+		list, err := pi.receivePgMsg(IdentifiesAuth)
+		if err != nil {
+			return err
+		}
+		for _, v := range list {
+			if v.Identifies == IdentifiesAuth && v.int32() != 0 {
+				return fmt.Errorf("unexpected authentication response: %q", v.Identifies)
+			}
 		}
 
-		raw, err := pi.reader.Peek(4)
+	case 5:
+		// MD5密码
+		reqPwd := NewPgMessage(IdentifiesPasswordMessage)
+		cipher := pi.md5([]byte(password + user))
+		cipher = append(cipher, msg.bytes(4)...)
+		cipher = append([]byte("md5"), pi.md5(cipher)...)
+		reqPwd.addBytes(cipher)
+
+		err = pi.send(reqPwd)
 		if err != nil {
-			return t, buf, err
+			return err
 		}
-		n := int(binary.BigEndian.Uint32(raw))
-
-		raw = make([]byte, n)
-		_, err = io.ReadFull(pi.reader, raw)
+		list, err := pi.receivePgMsg(IdentifiesAuth)
 		if err != nil {
-			return t, buf, err
+			return err
 		}
-
-		*buf = raw[4:]
-
-		if t == 'N' {
-			// ignore
-			log.Println("pg-io received a notice message ->", string(t), buf.string())
-		} else {
-			return t, buf, err
+		for _, v := range list {
+			if v.Identifies == IdentifiesAuth && v.int32() != 0 {
+				return fmt.Errorf("unexpected authentication response: %q", v.Identifies)
+			}
 		}
 	}
+	return
+}
+
+func (pi *PgIO) Parse(name, query string) (cols []PgColumn, parameters []uint32, err error) {
+	reqParse := NewPgMessage(IdentifiesParse)
+	reqParse.addString(name)
+	reqParse.addString(query)
+	reqParse.addInt16(0) // 参数数量统一置0
+
+	reqDes := NewPgMessage(IdentifiesDescribe)
+	reqDes.addByte('S')
+	reqDes.addString(name)
+
+	err = pi.send(reqParse, reqDes, NewPgMessage(IdentifiesSync))
+	if err != nil {
+		return
+	}
+
+	list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+
+	if err != nil {
+		return
+	}
+	for _, v := range list {
+		switch v.Identifies {
+		case IdentifiesParameterDescription:
+			var pn = v.int16()
+			for i := uint16(0); i < pn; i++ {
+				parameters = append(parameters, v.int32())
+			}
+		case IdentifiesRowDescription:
+			cols = v.columns()
+		case IdentifiesReadyForQuery:
+			pi.txStatus = TransactionStatus(v.byte())
+		}
+	}
+	return
+}
+
+func (pi *PgIO) ParseExec(name string, args []driver.Value) (data [][]byte, err error) {
+	rBind := NewPgMessage(IdentifiesBind)
+	rBind.addString("")
+	rBind.addString(name)
+	rBind.addInt16(0)
+	rBind.addInt16(len(args))
+	for _, arg := range args {
+		if arg == nil {
+			rBind.addInt32(-1)
+		} else {
+			b := value2bytes(arg)
+			rBind.addInt32(len(b))
+			rBind.addBytes(b)
+		}
+	}
+	rBind.addInt16(0)
+	rExec := NewPgMessage(IdentifiesExecute)
+	rExec.addString("")
+	rExec.addInt32(0) // all rows
+	err = pi.send(rBind, rExec, NewPgMessage(IdentifiesSync))
+	if err != nil {
+		return
+	}
+	list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+	if err != nil {
+		return
+	}
+	for _, v := range list {
+		switch v.Identifies {
+		case IdentifiesDataRow:
+			length := v.int16()
+			for i := uint16(0); i < length; i++ {
+				l := v.int32()
+				data = append(data, v.bytes(l))
+			}
+		case IdentifiesReadyForQuery:
+			pi.txStatus = TransactionStatus(v.byte())
+		}
+	}
+	return
+}
+
+func (pi *PgIO) CloseParse(name string) (err error) {
+	rc := NewPgMessage(IdentifiesClose)
+	rc.addByte(IdentifiesParse)
+	rc.addString(name)
+
+	err = pi.send(rc, NewPgMessage(IdentifiesSync))
+	if err != nil {
+		return
+	}
+	list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+	if err != nil {
+		return
+	}
+	for _, v := range list {
+		if v.Identifies == IdentifiesReadyForQuery {
+			pi.txStatus = TransactionStatus(v.byte())
+		}
+	}
+	return
 }

@@ -15,7 +15,6 @@ type PgDriver struct{}
 
 func (d *PgDriver) Open(name string) (driver.Conn, error) {
 	return NewPgConn(name)
-
 }
 
 // BeginTx starts and returns a new transaction.

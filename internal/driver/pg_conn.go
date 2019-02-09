@@ -9,10 +9,11 @@ package driver
 import (
 	"database/sql/driver"
 	"github.com/blusewang/pg/internal/network"
+	"log"
 )
 
-func NewPgConn(name string) (conn *pgConn, err error) {
-	c := &pgConn{}
+func NewPgConn(name string) (c *pgConn, err error) {
+	c = new(pgConn)
 	c.dsn, err = ParseDSN(name)
 	if err != nil {
 		return
@@ -27,6 +28,7 @@ func NewPgConn(name string) (conn *pgConn, err error) {
 	if err != nil {
 		return
 	}
+	log.Println(c.io.ServerConf)
 	return
 }
 
@@ -37,7 +39,10 @@ type pgConn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *pgConn) Prepare(query string) (driver.Stmt, error) {
-	return &PgStmt{}, nil
+	if c.io.IOError != nil {
+		return nil, driver.ErrBadConn
+	}
+	return NewPgStmt(c.io, query)
 }
 
 // Close invalidates and potentially stops any current

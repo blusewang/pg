@@ -9,22 +9,58 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
+	"github.com/blusewang/pg/internal/network"
+	"hash/crc32"
+	"log"
 )
 
-type PgStmt struct{}
+func NewPgStmt(io *network.PgIO, query string) (st *PgStmt, err error) {
+	if io.IOError != nil {
+		return nil, driver.ErrBadConn
+	}
+	st = new(PgStmt)
+	st.io = io
+	st.Identifies = fmt.Sprintf("%x", crc32.ChecksumIEEE([]byte(query)))
+	st.Sql = query
+	st.columns, st.parameterTypes, err = st.io.Parse(st.Identifies, st.Sql)
+	return st, err
+}
+
+type PgStmt struct {
+	io             *network.PgIO
+	Identifies     string
+	Sql            string
+	columns        []network.PgColumn
+	parameterTypes []uint32
+}
 
 func (s *PgStmt) Close() error {
-	return nil
-}
-func (s *PgStmt) NumInput() int {
-	return 0
+	if s.io.IOError != nil {
+		return driver.ErrBadConn
+	}
+	return s.io.CloseParse(s.Identifies)
 }
 
-func (s *PgStmt) Exec(args []driver.Value) (driver.Result, error) {
+func (s *PgStmt) NumInput() int {
+	return len(s.parameterTypes)
+}
+
+func (s *PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
+	log.Println("exec")
+	if s.io.IOError != nil {
+		return nil, driver.ErrBadConn
+	}
+	data, err := s.io.ParseExec(s.Identifies, args)
+	if err != nil {
+		return
+	}
+	log.Println(data)
 	return &PgResult{}, nil
 }
 
 func (s *PgStmt) Query(args []driver.Value) (driver.Rows, error) {
+	log.Println("query")
 	return &PgRows{}, nil
 }
 
@@ -32,7 +68,8 @@ func (s *PgStmt) Query(args []driver.Value) (driver.Rows, error) {
 // as an INSERT or UPDATE.
 //
 // ExecContext must honor the context timeout and return when it is canceled.
-func (s *PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+func (s *PgStmt) ExecContextt(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+	log.Println("ExecContext")
 	return &PgResult{}, nil
 }
 
