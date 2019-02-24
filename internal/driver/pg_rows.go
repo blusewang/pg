@@ -8,14 +8,24 @@ package driver
 
 import (
 	"database/sql/driver"
+	"github.com/blusewang/pg/internal/network"
+	"math"
 	"reflect"
 )
 
+const headerSize = 4
+
 type PgRows struct {
+	columns        []network.PgColumn
+	parameterTypes []uint32
+	data           *[][]byte
 }
 
-func (pr *PgRows) Columns() []string {
-	return nil
+func (pr *PgRows) Columns() (cols []string) {
+	for _, v := range pr.columns {
+		cols = append(cols, v.Name)
+	}
+	return
 }
 
 func (pr *PgRows) Close() error {
@@ -29,7 +39,16 @@ func (pr *PgRows) Next(dest []driver.Value) error {
 // may be implemented by Rows. It should return the precision and scale for decimal types.
 // If not applicable, ok should be false.
 func (pr *PgRows) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
-	return 0, 0, false
+	var fd = pr.columns[index]
+	switch fd.TypeOid {
+	case PgTypeNumeric, PgTypeArrNumeric:
+		mod := fd.TypeModifier - headerSize
+		precision = int64((mod >> 16) & 0xffff)
+		scale = int64(mod & 0xffff)
+		return precision, scale, true
+	default:
+		return 0, 0, false
+	}
 }
 
 // may be implemented by Rows. The nullable value should be true if it is known the column may be null,
@@ -39,11 +58,18 @@ func (pr *PgRows) ColumnTypeNullable(index int) (nullable, ok bool) {
 }
 
 func (pr *PgRows) ColumnTypeLength(index int) (length int64, ok bool) {
-	return 0, false
+	switch pr.columns[index].TypeOid {
+	case PgTypeText, PgTypeBytea:
+		return math.MaxInt64, true
+	case PgTypeVarchar, PgTypeBpchar:
+		return int64(pr.columns[index].TypeModifier - headerSize), true
+	default:
+		return 0, false
+	}
 }
 
 func (pr *PgRows) ColumnTypeDatabaseTypeName(index int) string {
-	return ""
+	return pr.columns[index].Name
 }
 
 func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {

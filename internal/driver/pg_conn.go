@@ -42,7 +42,7 @@ func (c *pgConn) Prepare(query string) (driver.Stmt, error) {
 	if c.io.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
-	return NewPgStmt(c.io, query)
+	return NewPgStmt(c.io, query, c.dsn)
 }
 
 // Close invalidates and potentially stops any current
@@ -72,6 +72,11 @@ func (c *pgConn) Begin() (driver.Tx, error) {
 //如果CheckNamedValue返回ErrRemoveArgument，则NamedValue将不包含在最终查询参数中。 这可用于将特殊选项传递给查询本身。
 //
 //如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
-func (c *pgConn) CheckNamedValue(*driver.NamedValue) error {
+func (c *pgConn) CheckNamedValues(nv *driver.NamedValue) error {
+	log.Println(nv.Name, "-", nv.Value, "-", nv.Ordinal)
 	return nil
+}
+
+func (c *pgConn) cancel() {
+	_ = c.io.CancelRequest(c.dsn.Address())
 }

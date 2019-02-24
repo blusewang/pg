@@ -24,14 +24,16 @@ func TestDriver_Open(t *testing.T) {
 	}
 	defer db.Close()
 	log.Println("db -> ", db)
-	stmt, err := db.Prepare("select * from bluse where id<$1 and id > $2")
+	stmt, err := db.Prepare("update bluse set info='sssss' where id<$1")
 	if err != nil {
 		t.Error(err)
 	}
 	log.Println(stmt)
-	rs, err := stmt.Exec(100, 0)
+	rows, err := stmt.Query(50)
 	if err != nil {
 		t.Error(err)
 	}
-	log.Println("result -> ", rs)
+	log.Println(rows)
+	log.Println(rows.ColumnTypes())
+	log.Println(rows.Columns())
 }

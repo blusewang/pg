@@ -10,11 +10,13 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
-	"database/sql/driver"
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -229,7 +231,49 @@ func (pi *PgIO) Parse(name, query string) (cols []PgColumn, parameters []uint32,
 	return
 }
 
-func (pi *PgIO) ParseExec(name string, args []driver.Value) (data [][]byte, err error) {
+func (pi *PgIO) ParseExec(name string, args []interface{}) (n int, err error) {
+	rBind := NewPgMessage(IdentifiesBind)
+	rBind.addString("")
+	rBind.addString(name)
+	rBind.addInt16(0)
+	rBind.addInt16(len(args))
+	for _, arg := range args {
+		if arg == nil {
+			rBind.addInt32(-1)
+		} else {
+			b := value2bytes(arg)
+			rBind.addInt32(len(b))
+			rBind.addBytes(b)
+		}
+	}
+	rBind.addInt16(0)
+	rExec := NewPgMessage(IdentifiesExecute)
+	rExec.addString("")
+	rExec.addInt32(0) // all rows
+	err = pi.send(rBind, rExec, NewPgMessage(IdentifiesSync))
+	if err != nil {
+		return
+	}
+	list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+	if err != nil {
+		return
+	}
+	for _, v := range list {
+		switch v.Identifies {
+		case IdentifiesCommandComplete:
+			var rs = strings.Split(v.string(), " ")
+			if len(rs) == 2 {
+				n, _ = strconv.Atoi(rs[1])
+			}
+		case IdentifiesReadyForQuery:
+			pi.txStatus = TransactionStatus(v.byte())
+		}
+	}
+	return
+}
+
+// data 使用指针减少copy时的内存损耗
+func (pi *PgIO) ParseQuery(name string, args []interface{}) (data *[][]byte, err error) {
 	rBind := NewPgMessage(IdentifiesBind)
 	rBind.addString("")
 	rBind.addString(name)
@@ -262,7 +306,7 @@ func (pi *PgIO) ParseExec(name string, args []driver.Value) (data [][]byte, err 
 			length := v.int16()
 			for i := uint16(0); i < length; i++ {
 				l := v.int32()
-				data = append(data, v.bytes(l))
+				*data = append(*data, v.bytes(l))
 			}
 		case IdentifiesReadyForQuery:
 			pi.txStatus = TransactionStatus(v.byte())
@@ -289,5 +333,37 @@ func (pi *PgIO) CloseParse(name string) (err error) {
 			pi.txStatus = TransactionStatus(v.byte())
 		}
 	}
+	return
+}
+
+func (pi *PgIO) CancelRequest(network, address string, timeout time.Duration) (err error) {
+
+	var nIO = NewPgIO()
+	err = nIO.Dial(network, address, timeout)
+	if err != nil {
+		return
+	}
+	rc := NewPgMessage(IdentifiesCancelRequest)
+	rc.addInt32(80877102)
+	rc.addInt32(int(pi.serverPid))
+	rc.addInt32(int(pi.backendKey))
+
+	_ = rc.encode()
+	_, err = nIO.conn.Write(rc.Content)
+	log.Println("send cancel", err)
+	if err != nil {
+		return
+	}
+	defer nIO.conn.Close()
+	//list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+	//if err != nil {
+	//	return
+	//}
+	//for _, v := range list {
+	//	switch v.Identifies {
+	//	case IdentifiesReadyForQuery:
+	//		pi.txStatus = TransactionStatus(v.byte())
+	//	}
+	//}
 	return
 }

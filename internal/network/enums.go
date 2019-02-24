@@ -40,6 +40,7 @@ const (
 	IdentifiesCancelRequest        = 0
 	IdentifiesClose                = 'C'
 	IdentifiesCloseComplete        = '3'
+	IdentifiesCommandComplete      = 'C'
 	IdentifiesCopyData             = 'd'
 	IdentifiesCopyDone             = 'c'
 	IdentifiesCopyFail             = 'f'

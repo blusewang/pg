@@ -7,9 +7,9 @@
 package network
 
 import (
-	"database/sql/driver"
 	"go/types"
 	"log"
+	"reflect"
 	"strconv"
 	"time"
 )
@@ -20,8 +20,8 @@ import (
 //   []byte
 //   string
 //   time.Time
-func value2bytes(value driver.Value) []byte {
-	log.Println(value)
+func value2bytes(value interface{}) []byte {
+	log.Println(reflect.TypeOf(value))
 	switch value.(type) {
 	case types.Nil:
 		log.Println(value, nil)
