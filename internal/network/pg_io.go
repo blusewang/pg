@@ -13,7 +13,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -362,7 +361,6 @@ func (pi *PgIO) CancelRequest(network, address string, timeout time.Duration) (e
 
 	_ = rc.encode()
 	_, err = nIO.conn.Write(rc.Content)
-	log.Println("send cancel", err)
 	if err != nil {
 		return
 	}
