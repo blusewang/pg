@@ -11,7 +11,16 @@ import (
 	"database/sql"
 	"log"
 	"testing"
+	"time"
 )
+
+type bluse struct {
+	Id       int64     `json:"id"`
+	Name     string    `json:"name"`
+	Info     string    `json:"info"`
+	CreateAt time.Time `json:"create_at"`
+	Price    float64   `json:"price"`
+}
 
 func TestDriver_Open(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
@@ -24,7 +33,7 @@ func TestDriver_Open(t *testing.T) {
 	}
 	defer db.Close()
 	log.Println("db -> ", db)
-	stmt, err := db.Prepare("update bluse set info='sssss' where id<$1")
+	stmt, err := db.Prepare("select * from bluse where id<$1")
 	if err != nil {
 		t.Error(err)
 	}
@@ -36,4 +45,15 @@ func TestDriver_Open(t *testing.T) {
 	log.Println(rows)
 	log.Println(rows.ColumnTypes())
 	log.Println(rows.Columns())
+	var list []bluse
+	for rows.Next() {
+		var b bluse
+		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price)
+		log.Println(b, err)
+		if err != nil {
+			t.Error(err)
+			list = append(list, b)
+		}
+	}
+	log.Println(list)
 }

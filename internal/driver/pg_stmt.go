@@ -65,16 +65,16 @@ func (s *PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
 }
 
 func (s *PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
-
 	var as []interface{}
 	for _, v := range args {
 		as = append(as, v)
 	}
 
 	var pr = new(PgRows)
+	pr.position = -1
 	pr.columns = s.columns
 	pr.parameterTypes = s.parameterTypes
-	pr.data, err = s.io.ParseQuery(s.Identifies, as)
+	pr.fieldLen, pr.rows, err = s.io.ParseQuery(s.Identifies, as)
 	return pr, nil
 }
 
@@ -115,7 +115,7 @@ func (s *PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ 
 	var pr = new(PgRows)
 	pr.columns = s.columns
 	pr.parameterTypes = s.parameterTypes
-	pr.data, err = s.io.ParseQuery(s.Identifies, as)
+	pr.fieldLen, pr.rows, err = s.io.ParseQuery(s.Identifies, as)
 
 	return pr, nil
 }

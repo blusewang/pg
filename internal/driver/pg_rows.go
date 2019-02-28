@@ -8,9 +8,13 @@ package driver
 
 import (
 	"database/sql/driver"
+	"errors"
 	"github.com/blusewang/pg/internal/network"
+	"io"
+	"log"
 	"math"
 	"reflect"
+	"time"
 )
 
 const headerSize = 4
@@ -18,7 +22,9 @@ const headerSize = 4
 type PgRows struct {
 	columns        []network.PgColumn
 	parameterTypes []uint32
-	data           *[][]byte
+	fieldLen       *[][]uint32
+	rows           *[][][]byte
+	position       int
 }
 
 func (pr *PgRows) Columns() (cols []string) {
@@ -33,6 +39,16 @@ func (pr *PgRows) Close() error {
 }
 
 func (pr *PgRows) Next(dest []driver.Value) error {
+	var rowsLen = len(*pr.rows)
+	if pr.position < -1 || pr.position > rowsLen {
+		return errors.New("pg_rows position crossing")
+	} else if pr.position == rowsLen {
+		return io.EOF
+	}
+	pr.position += 1
+	for k, v := range (*pr.rows)[pr.position] {
+		dest[k] = driver.Value(v)
+	}
 	return nil
 }
 
@@ -53,8 +69,8 @@ func (pr *PgRows) ColumnTypePrecisionScale(index int) (precision, scale int64, o
 
 // may be implemented by Rows. The nullable value should be true if it is known the column may be null,
 // or false if the column is known to be not nullable. If the column nullability is unknown, ok should be false.
-func (pr *PgRows) ColumnTypeNullable(index int) (nullable, ok bool) {
-	return false, false
+func (pr *PgRows) ColumnTypeNullables(index int) (nullable, ok bool) {
+	return false, true
 }
 
 func (pr *PgRows) ColumnTypeLength(index int) (length int64, ok bool) {
@@ -69,17 +85,32 @@ func (pr *PgRows) ColumnTypeLength(index int) (length int64, ok bool) {
 }
 
 func (pr *PgRows) ColumnTypeDatabaseTypeName(index int) string {
-	return pr.columns[index].Name
+	//log.Println(index,PgTypeMap[PgType(pr.columns[index].TypeOid)])
+	return PgTypeMap[PgType(pr.columns[index].TypeOid)]
 }
 
 func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
-	return nil
+	switch PgType(pr.columns[index].TypeOid) {
+	case PgTypeBool:
+		return reflect.TypeOf(false)
+	case PgTypeDate, PgTypeTime, PgTypeTimestamp, PgTypeTimestamptz, PgTypeTimetz:
+		return reflect.TypeOf(time.Time{})
+	case PgTypeInt2, PgTypeInt4, PgTypeInt8:
+		return reflect.TypeOf(int64(0))
+	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
+		return reflect.TypeOf(float64(0))
+	case PgTypeVarchar, PgTypeText:
+		return reflect.TypeOf("")
+	default:
+		return reflect.TypeOf([]byte{})
+	}
 }
 
 // RowsNextResultSet
 // HasNextResultSet is called at the end of the current result set and
 // reports whether there is another result set after the current one.
 func (pr *PgRows) HasNextResultSet() bool {
+	log.Println("")
 	return false
 }
 
@@ -88,5 +119,6 @@ func (pr *PgRows) HasNextResultSet() bool {
 //
 // NextResultSet should return io.EOF when there are no more result sets.
 func (pr *PgRows) NextResultSet() error {
+	log.Println("")
 	return nil
 }

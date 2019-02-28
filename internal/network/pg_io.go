@@ -273,7 +273,7 @@ func (pi *PgIO) ParseExec(name string, args []interface{}) (n int, err error) {
 }
 
 // data 使用指针减少copy时的内存损耗
-func (pi *PgIO) ParseQuery(name string, args []interface{}) (data *[][]byte, err error) {
+func (pi *PgIO) ParseQuery(name string, args []interface{}) (fieldLen *[][]uint32, data *[][][]byte, err error) {
 	rBind := NewPgMessage(IdentifiesBind)
 	rBind.addString("")
 	rBind.addString(name)
@@ -300,14 +300,27 @@ func (pi *PgIO) ParseQuery(name string, args []interface{}) (data *[][]byte, err
 	if err != nil {
 		return
 	}
+	fieldLen = new([][]uint32)
+	data = new([][][]byte)
+
 	for _, v := range list {
 		switch v.Identifies {
 		case IdentifiesDataRow:
+			var rowLen = new([]uint32)
+			var row = new([][]byte)
 			length := v.int16()
 			for i := uint16(0); i < length; i++ {
 				l := v.int32()
-				*data = append(*data, v.bytes(l))
+				if l == 4294967295 {
+					// nil
+					*row = append(*row, []byte{})
+				} else {
+					*row = append(*row, v.bytes(l))
+				}
+				*rowLen = append(*rowLen, l)
 			}
+			*fieldLen = append(*fieldLen, *rowLen)
+			*data = append(*data, *row)
 		case IdentifiesReadyForQuery:
 			pi.txStatus = TransactionStatus(v.byte())
 		}
@@ -337,7 +350,6 @@ func (pi *PgIO) CloseParse(name string) (err error) {
 }
 
 func (pi *PgIO) CancelRequest(network, address string, timeout time.Duration) (err error) {
-
 	var nIO = NewPgIO()
 	err = nIO.Dial(network, address, timeout)
 	if err != nil {
@@ -355,15 +367,5 @@ func (pi *PgIO) CancelRequest(network, address string, timeout time.Duration) (e
 		return
 	}
 	defer nIO.conn.Close()
-	//list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
-	//if err != nil {
-	//	return
-	//}
-	//for _, v := range list {
-	//	switch v.Identifies {
-	//	case IdentifiesReadyForQuery:
-	//		pi.txStatus = TransactionStatus(v.byte())
-	//	}
-	//}
 	return
 }
