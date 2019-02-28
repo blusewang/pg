@@ -46,7 +46,6 @@ func (pi *PgIO) md5(s []byte) []byte {
 func (pi *PgIO) receivePgMsg(sep Identifies) (ms []PgMessage, err error) {
 	for {
 		var msg PgMessage
-
 		id, err := pi.reader.ReadByte()
 		if err != nil {
 			pi.IOError = err
@@ -57,7 +56,6 @@ func (pi *PgIO) receivePgMsg(sep Identifies) (ms []PgMessage, err error) {
 		if err != nil {
 			return ms, err
 		}
-
 		msg.Len = binary.BigEndian.Uint32(msg.Content)
 		msg.Content = make([]byte, msg.Len, msg.Len)
 		_, err = io.ReadFull(pi.reader, msg.Content)
