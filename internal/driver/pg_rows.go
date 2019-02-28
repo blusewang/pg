@@ -11,7 +11,6 @@ import (
 	"errors"
 	"github.com/blusewang/pg/internal/network"
 	"io"
-	"log"
 	"math"
 	"reflect"
 	"time"
@@ -85,7 +84,6 @@ func (pr *PgRows) ColumnTypeLength(index int) (length int64, ok bool) {
 }
 
 func (pr *PgRows) ColumnTypeDatabaseTypeName(index int) string {
-	//log.Println(index,PgTypeMap[PgType(pr.columns[index].TypeOid)])
 	return PgTypeMap[PgType(pr.columns[index].TypeOid)]
 }
 
@@ -110,7 +108,6 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 // HasNextResultSet is called at the end of the current result set and
 // reports whether there is another result set after the current one.
 func (pr *PgRows) HasNextResultSet() bool {
-	log.Println("")
 	return false
 }
 
@@ -119,6 +116,5 @@ func (pr *PgRows) HasNextResultSet() bool {
 //
 // NextResultSet should return io.EOF when there are no more result sets.
 func (pr *PgRows) NextResultSet() error {
-	log.Println("")
 	return nil
 }
