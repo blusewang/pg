@@ -33,7 +33,7 @@ type PgIO struct {
 	serverPid  uint32
 	ServerConf map[string]string
 	backendKey uint32
-	location   *time.Location
+	Location   *time.Location
 	IOError    error
 }
 
@@ -127,10 +127,10 @@ func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
 			k := m.string()
 			v := m.string()
 			if k == "TimeZone" {
-				pi.location, err = time.LoadLocation(v)
+				pi.Location, err = time.LoadLocation(v)
 				if err != nil {
 					err = nil
-					pi.location = nil
+					pi.Location = nil
 				}
 			}
 			pi.ServerConf[k] = v
@@ -310,7 +310,7 @@ func (pi *PgIO) ParseQuery(name string, args []interface{}) (fieldLen *[][]uint3
 				l := v.int32()
 				if l == 4294967295 {
 					// nil
-					*row = append(*row, []byte{})
+					*row = append(*row, nil)
 				} else {
 					*row = append(*row, v.bytes(l))
 				}

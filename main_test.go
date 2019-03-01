@@ -15,11 +15,13 @@ import (
 )
 
 type bluse struct {
-	Id       int64     `json:"id"`
-	Name     string    `json:"name"`
-	Info     string    `json:"info"`
-	CreateAt time.Time `json:"create_at"`
-	Price    float64   `json:"price"`
+	Id       int64          `json:"id"`
+	Name     sql.NullString `json:"name"`
+	Info     string         `json:"info"`
+	CreateAt time.Time      `json:"create_at"`
+	Price    float64        `json:"price"`
+	UuId     string
+	Raws     []byte
 }
 
 func TestDriver_Open(t *testing.T) {
@@ -48,12 +50,12 @@ func TestDriver_Open(t *testing.T) {
 	var list []bluse
 	for rows.Next() {
 		var b bluse
-		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price)
+		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws)
 		log.Println(b, err)
 		if err != nil {
-			t.Error(err)
-			list = append(list, b)
+			log.Println(err)
 		}
+		list = append(list, b)
 	}
 	log.Println(list)
 }

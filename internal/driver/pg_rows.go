@@ -19,6 +19,7 @@ import (
 const headerSize = 4
 
 type PgRows struct {
+	location       *time.Location
 	columns        []network.PgColumn
 	parameterTypes []uint32
 	fieldLen       *[][]uint32
@@ -34,20 +35,25 @@ func (pr *PgRows) Columns() (cols []string) {
 }
 
 func (pr *PgRows) Close() error {
+	pr.position = 0
+	pr.rows = nil
+	pr.fieldLen = nil
+	pr.columns = nil
+	pr.parameterTypes = nil
 	return nil
 }
 
 func (pr *PgRows) Next(dest []driver.Value) error {
 	var rowsLen = len(*pr.rows)
-	if pr.position < -1 || pr.position > rowsLen {
+	if pr.position < 0 || pr.position >= rowsLen {
 		return errors.New("pg_rows position crossing")
 	} else if pr.position == rowsLen {
 		return io.EOF
 	}
-	pr.position += 1
 	for k, v := range (*pr.rows)[pr.position] {
-		dest[k] = driver.Value(v)
+		dest[k] = convert(v, pr.columns[k], (*pr.fieldLen)[pr.position][k], pr.location)
 	}
+	pr.position += 1
 	return nil
 }
 

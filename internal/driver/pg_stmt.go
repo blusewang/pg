@@ -113,6 +113,7 @@ func (s *PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ 
 	}
 
 	var pr = new(PgRows)
+	pr.location = s.io.Location
 	pr.columns = s.columns
 	pr.parameterTypes = s.parameterTypes
 	pr.fieldLen, pr.rows, err = s.io.ParseQuery(s.Identifies, as)
