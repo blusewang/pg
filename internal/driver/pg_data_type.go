@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
-	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -21,12 +20,13 @@ import (
 	"time"
 )
 
+// 针对需改造的数据做转换
 func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.Location) driver.Value {
-	log.Println(string(raw), col.Name)
 	if fieldLen == 4294967295 {
 		// is nil
-		return nil
-		return []byte{}
+		//return nil
+		//log.Println(raw,col.Name,col.TypeOid,col.Len)
+		//return []byte{}
 	}
 	if col.Format != 0 {
 		panic("not support binary data")
@@ -35,11 +35,8 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	switch PgType(col.TypeOid) {
 	case PgTypeBool:
 		return string(raw)[0] == 't'
-	case PgTypeText, PgTypeVarchar, PgTypeChar:
-		return string(raw)
 	case PgTypeBytea:
 		var b, _ = parseBytea(raw)
-		log.Println(b)
 		return b
 	case PgTypeTimestamptz:
 		return parseTs(location, string(raw))
@@ -50,15 +47,49 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeTimetz:
 		return mustParse("15:04:05-07", PgTypeTimetz, raw)
 	case PgTypeInt2, PgTypeInt4, PgTypeInt8:
-		log.Println(string(raw))
 		var i, _ = strconv.Atoi(string(raw))
 		return i
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case PgTypeUuid:
-		log.Println(string(raw))
-		return raw
+	case PgTypeArrInt4:
+		var str = string(raw)
+		var arr []int64
+		if strings.HasPrefix(str, "{") {
+			str = str[1 : len(str)-1]
+		}
+		for _, v := range strings.Split(str, ",") {
+			if v != "" {
+				n, _ := strconv.ParseInt(v, 0, 64)
+				arr = append(arr, n)
+			}
+		}
+		return arr
+	case PgTypeArrFloat4, PgTypeArrFloat8:
+		var str = string(raw)
+		var arr []float64
+		if strings.HasPrefix(str, "{") {
+			str = str[1 : len(str)-1]
+		}
+		for _, v := range strings.Split(str, ",") {
+			if v != "" {
+				n, _ := strconv.ParseFloat(v, 64)
+				arr = append(arr, n)
+			}
+		}
+		return arr
+	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar:
+		var str = string(raw)
+		var arr []string
+		if strings.HasPrefix(str, "{") {
+			str = str[2 : len(str)-2]
+		}
+		for _, v := range strings.Split(str, "','") {
+			if v != "" {
+				arr = append(arr, v)
+			}
+		}
+		return arr
 	default:
 		return raw
 	}

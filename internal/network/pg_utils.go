@@ -9,7 +9,6 @@ package network
 import (
 	"go/types"
 	"log"
-	"reflect"
 	"strconv"
 	"time"
 )
@@ -21,7 +20,6 @@ import (
 //   string
 //   time.Time
 func value2bytes(value interface{}) []byte {
-	log.Println(reflect.TypeOf(value))
 	switch value.(type) {
 	case types.Nil:
 		log.Println(value, nil)

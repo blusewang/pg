@@ -7,7 +7,6 @@
 package pg
 
 import (
-	"bytes"
 	"database/sql"
 	"log"
 	"testing"
@@ -22,40 +21,41 @@ type bluse struct {
 	Price    float64        `json:"price"`
 	UuId     string
 	Raws     []byte
+	IntArr   []int64
+	StrArr   []string
 }
 
 func TestDriver_Open(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
-
-	log.Println(bytes.TrimLeft([]byte{0, 0, 0, 0, 0, 3, 255}, "\000"))
 
 	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
 		t.Error(err)
 	}
 	defer db.Close()
-	log.Println("db -> ", db)
-	stmt, err := db.Prepare("select * from bluse where id<$1")
+	//stmt, err := db.Prepare("update bluse set arr_int=$1 where id=$2")
+	stmt, err := db.Prepare("select * from bluse where id=$1")
 	if err != nil {
 		t.Error(err)
 	}
-	log.Println(stmt)
-	rows, err := stmt.Query(50)
+	//rs,err := stmt.Exec([]int64{4,5,6},2)
+
+	var a = 2
+	rows, err := stmt.Query(&a)
 	if err != nil {
 		t.Error(err)
 	}
+	//log.Println(rs)
 	log.Println(rows)
-	log.Println(rows.ColumnTypes())
-	log.Println(rows.Columns())
-	var list []bluse
-	for rows.Next() {
-		var b bluse
-		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws)
-		log.Println(b, err)
-		if err != nil {
-			log.Println(err)
-		}
-		list = append(list, b)
-	}
-	log.Println(list)
+	//var list []bluse
+	//for rows.Next() {
+	//	var b bluse
+	//	err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws,&b.IntArr,&b.StrArr)
+	//	log.Println(b, err)
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//	list = append(list, b)
+	//}
+	//log.Println(list)
 }

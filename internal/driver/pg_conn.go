@@ -8,8 +8,12 @@ package driver
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"github.com/blusewang/pg/internal/network"
 	"log"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 func NewPgConn(name string) (c *pgConn, err error) {
@@ -28,7 +32,6 @@ func NewPgConn(name string) (c *pgConn, err error) {
 	if err != nil {
 		return
 	}
-	log.Println(c.io.ServerConf)
 	return
 }
 
@@ -72,8 +75,23 @@ func (c *pgConn) Begin() (driver.Tx, error) {
 //如果CheckNamedValue返回ErrRemoveArgument，则NamedValue将不包含在最终查询参数中。 这可用于将特殊选项传递给查询本身。
 //
 //如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
-func (c *pgConn) CheckNamedValues(nv *driver.NamedValue) error {
-	log.Println(nv.Name, "-", nv.Value, "-", nv.Ordinal)
+func (c *pgConn) CheckNamedValue(nv *driver.NamedValue) error {
+	log.Println("nv.Name", nv.Name, "nv.Value", nv.Value, "nv.Ordinal", nv.Ordinal)
+	log.Println(reflect.TypeOf(nv.Value))
+	switch nv.Value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr:
+		log.Println(fmt.Sprintf("%d", nv.Value))
+		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", nv.Value), 0, 64)
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
+		log.Println(nv.Value)
+		log.Printf("%d", nv.Value)
+		var i, _ = strconv.Atoi(fmt.Sprintf("%d", nv.Value))
+		log.Println(i)
+	case []int, []int8, []int16, []int32, []int64, []uint, []uint8, []uint16, []uint32, []uint64, []uintptr:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
+		log.Println(nv.Value)
+	}
 	return nil
 }
 
