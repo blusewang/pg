@@ -78,19 +78,46 @@ func (c *pgConn) Begin() (driver.Tx, error) {
 func (c *pgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	log.Println("nv.Name", nv.Name, "nv.Value", nv.Value, "nv.Ordinal", nv.Ordinal)
 	log.Println(reflect.TypeOf(nv.Value))
+
 	switch nv.Value.(type) {
+
+	// int
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr:
-		log.Println(fmt.Sprintf("%d", nv.Value))
 		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", nv.Value), 0, 64)
 	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
-		log.Println(nv.Value)
-		log.Printf("%d", nv.Value)
-		var i, _ = strconv.Atoi(fmt.Sprintf("%d", nv.Value))
-		log.Println(i)
+		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", reflect.ValueOf(nv.Value).Elem().Int()), 0, 64)
 	case []int, []int8, []int16, []int32, []int64, []uint, []uint8, []uint16, []uint32, []uint64, []uintptr:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
-		log.Println(nv.Value)
+	case *[]int, *[]int8, *[]int16, *[]int32, *[]int64, *[]uint, *[]uint8, *[]uint16, *[]uint32, *[]uint64, *[]uintptr:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
+
+		// bool
+	case bool:
+		if nv.Value.(bool) {
+			nv.Value = "t"
+		} else {
+			nv.Value = "f"
+		}
+	case *bool:
+		if reflect.ValueOf(nv.Value).Elem().Bool() {
+			nv.Value = "t"
+		} else {
+			nv.Value = "f"
+		}
+	case []bool:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
+	case *[]bool:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
+
+		// string
+	case *string:
+		nv.Value = reflect.ValueOf(nv.Value).Elem().String()
+	case []string:
+
 	}
 	return nil
 }
