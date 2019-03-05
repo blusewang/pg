@@ -136,18 +136,3 @@ func (s *PgStmt) cancel() {
 func (s *PgStmt) complete() {
 	s.resultSig <- 1
 }
-
-// NamedValueChecker可以可选地由Conn或Stmt实现。 它为驱动程序提供了更多控制来处理Go和数据库类型，超出了允许的默认值类型。
-//
-//sql包按以下顺序检查值检查器，在第一个找到的匹配项处停止：
-// Stmt.NamedValueChecker，Conn.NamedValueChecker，Stmt.ColumnConverter，DefaultParameterConverter。
-//
-//如果CheckNamedValue返回ErrRemoveArgument，则NamedValue将不包含在最终查询参数中。 这可用于将特殊选项传递给查询本身。
-//
-//如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
-func (s *PgStmt) CheckNamedValues(nv *driver.NamedValue) error {
-	log.Println(s.columns)
-	log.Println(s.parameterTypes)
-	log.Println(nv.Name, "-", nv.Value, "-", nv.Ordinal)
-	return nil
-}
