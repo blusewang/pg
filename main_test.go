@@ -74,3 +74,10 @@ func TestDriver_Exec(t *testing.T) {
 	log.Println(rs.LastInsertId())
 	log.Println(rs.RowsAffected())
 }
+
+func TestDriver_OpenDb(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	var db = sql.OpenDB(NewConnector(""))
+	log.Println(db)
+}

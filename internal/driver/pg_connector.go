@@ -11,10 +11,12 @@ import (
 	"database/sql/driver"
 )
 
-type PgConnector struct{}
+type PgConnector struct {
+	Name string
+}
 
-func (c *PgConnector) Connect(context.Context) (driver.Conn, error) {
-	return &pgConn{}, nil
+func (c *PgConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	return NewPgConnContext(ctx, c.Name)
 }
 
 func (c *PgConnector) Driver() driver.Driver {

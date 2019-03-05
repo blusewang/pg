@@ -32,3 +32,7 @@ func (d *PgDriver) Open(name string) (driver.Conn, error) {
 func (d *PgDriver) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	return nil, nil
 }
+
+func (d *PgDriver) OpenConnector(name string) (driver.Connector, error) {
+	return &PgConnector{Name: name}, nil
+}

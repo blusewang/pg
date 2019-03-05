@@ -7,6 +7,7 @@
 package driver
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
@@ -15,8 +16,8 @@ import (
 	"strings"
 )
 
-func NewPgConn(name string) (c *pgConn, err error) {
-	c = new(pgConn)
+func NewPgConn(name string) (c *PgConn, err error) {
+	c = new(PgConn)
 	c.dsn, err = ParseDSN(name)
 	if err != nil {
 		return
@@ -34,13 +35,34 @@ func NewPgConn(name string) (c *pgConn, err error) {
 	return
 }
 
-type pgConn struct {
-	dsn *DataSourceName
-	io  *network.PgIO
+func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
+	c = new(PgConn)
+	c.dsn, err = ParseDSN(name)
+	if err != nil {
+		return
+	}
+
+	c.io = network.NewPgIO()
+	var net, addr, timeout = c.dsn.Address()
+	err = c.io.DialContext(ctx, net, addr, timeout)
+	if err != nil {
+		return
+	}
+	err = c.io.StartUp(c.dsn.Parameter, c.dsn.password)
+	if err != nil {
+		return
+	}
+	return
+}
+
+type PgConn struct {
+	dsn       *DataSourceName
+	io        *network.PgIO
+	resultSig chan int
 }
 
 // Prepare returns a prepared statement, bound to this connection.
-func (c *pgConn) Prepare(query string) (driver.Stmt, error) {
+func (c *PgConn) Prepare(query string) (driver.Stmt, error) {
 	if c.io.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
@@ -55,14 +77,14 @@ func (c *pgConn) Prepare(query string) (driver.Stmt, error) {
 // connections and only calls Close when there's a surplus of
 // idle connections, it shouldn't be necessary for drivers to
 // do their own connection caching.
-func (c *pgConn) Close() error {
+func (c *PgConn) Close() error {
 	return nil
 }
 
 // Begin starts and returns a new transaction.
 //
 // Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
-func (c *pgConn) Begin() (driver.Tx, error) {
+func (c *PgConn) Begin() (driver.Tx, error) {
 	return &PgTx{}, nil
 }
 
@@ -74,7 +96,7 @@ func (c *pgConn) Begin() (driver.Tx, error) {
 //如果CheckNamedValue返回ErrRemoveArgument，则NamedValue将不包含在最终查询参数中。 这可用于将特殊选项传递给查询本身。
 //
 //如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
-func (c *pgConn) CheckNamedValue(nv *driver.NamedValue) error {
+func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	switch nv.Value.(type) {
 
 	// bool
@@ -149,6 +171,6 @@ func (c *pgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	return nil
 }
 
-func (c *pgConn) cancel() {
+func (c *PgConn) cancel() {
 	_ = c.io.CancelRequest(c.dsn.Address())
 }
