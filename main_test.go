@@ -25,7 +25,7 @@ type bluse struct {
 	StrArr   []string
 }
 
-func TestDriver_Open(t *testing.T) {
+func TestDriver_Select(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
 	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
@@ -33,29 +33,44 @@ func TestDriver_Open(t *testing.T) {
 		t.Error(err)
 	}
 	defer db.Close()
-	//stmt, err := db.Prepare("update bluse set arr_int=$1 where id=$2")
-	stmt, err := db.Prepare("select * from bluse where id=$1")
+	stmt, err := db.Prepare("select * from bluse where id>$1")
 	if err != nil {
 		t.Error(err)
 	}
-	//rs,err := stmt.Exec([]int64{4,5,6},2)
 
-	var a = 2
+	var a = 0
 	rows, err := stmt.Query(&a)
 	if err != nil {
 		t.Error(err)
 	}
-	//log.Println(rs)
-	log.Println(rows)
+	//log.Println(rows)
 	//var list []bluse
-	//for rows.Next() {
-	//	var b bluse
-	//	err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws,&b.IntArr,&b.StrArr)
-	//	log.Println(b, err)
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//	list = append(list, b)
-	//}
+	for rows.Next() {
+		var b bluse
+		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws, &b.IntArr, &b.StrArr)
+		log.Println(b, err)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(string(b.Raws))
+	}
 	//log.Println(list)
+}
+
+func TestDriver_Exec(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	stmt, err := db.Prepare("update bluse set raws=$1 where id=$2")
+	if err != nil {
+		t.Error(err)
+	}
+	rs, err := stmt.Exec([]byte("asdf,'sdf"), 1)
+
+	log.Println(rs.LastInsertId())
+	log.Println(rs.RowsAffected())
 }

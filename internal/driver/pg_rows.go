@@ -72,12 +72,6 @@ func (pr *PgRows) ColumnTypePrecisionScale(index int) (precision, scale int64, o
 	}
 }
 
-// may be implemented by Rows. The nullable value should be true if it is known the column may be null,
-// or false if the column is known to be not nullable. If the column nullability is unknown, ok should be false.
-func (pr *PgRows) ColumnTypeNullables(index int) (nullable, ok bool) {
-	return false, true
-}
-
 func (pr *PgRows) ColumnTypeLength(index int) (length int64, ok bool) {
 	switch pr.columns[index].TypeOid {
 	case PgTypeText, PgTypeBytea:

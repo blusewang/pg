@@ -10,7 +10,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -76,24 +75,9 @@ func (c *pgConn) Begin() (driver.Tx, error) {
 //
 //如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
 func (c *pgConn) CheckNamedValue(nv *driver.NamedValue) error {
-	log.Println("nv.Name", nv.Name, "nv.Value", nv.Value, "nv.Ordinal", nv.Ordinal)
-	log.Println(reflect.TypeOf(nv.Value))
-
 	switch nv.Value.(type) {
 
-	// int
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr:
-		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", nv.Value), 0, 64)
-	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64, *uintptr:
-		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", reflect.ValueOf(nv.Value).Elem().Int()), 0, 64)
-	case []int, []int8, []int16, []int32, []int64, []uint, []uint8, []uint16, []uint32, []uint64, []uintptr:
-		var as = fmt.Sprintf("%v", nv.Value)
-		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
-	case *[]int, *[]int8, *[]int16, *[]int32, *[]int64, *[]uint, *[]uint8, *[]uint16, *[]uint32, *[]uint64, *[]uintptr:
-		var as = fmt.Sprintf("%v", nv.Value)
-		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
-
-		// bool
+	// bool
 	case bool:
 		if nv.Value.(bool) {
 			nv.Value = "t"
@@ -113,10 +97,53 @@ func (c *pgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
 
-		// string
+	//	string
 	case *string:
 		nv.Value = reflect.ValueOf(nv.Value).Elem().String()
 	case []string:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{'" + strings.Replace(as[1:len(as)-1], " ", "','", -1) + "'}"
+	case *[]string:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{'" + strings.Replace(as[2:len(as)-1], " ", "','", -1) + "'}"
+
+	//	int
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint64, uintptr:
+		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", nv.Value), 0, 64)
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint64, *uintptr:
+		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", reflect.ValueOf(nv.Value).Elem().Int()), 0, 64)
+	case []int, []int8, []int16, []int64, []uint, []uint16, []uint64, []uintptr:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
+	case *[]int, *[]int8, *[]int16, *[]int64, *[]uint, *[]uint16, *[]uint64, *[]uintptr:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
+
+	//	float
+	case float32, float64:
+		nv.Value, _ = strconv.ParseFloat(fmt.Sprintf("%v", nv.Value), 64)
+	case *float32, *float64:
+		nv.Value, _ = strconv.ParseFloat(fmt.Sprintf("%v", reflect.ValueOf(nv.Value).Elem().Float()), 64)
+	case []float32, []float64:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
+	case *[]float32, *[]float64:
+		var as = fmt.Sprintf("%v", nv.Value)
+		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
+
+	//	byte
+	case []byte:
+		nv.Value = fmt.Sprintf("\\x%x", nv.Value)
+	case *[]byte:
+		var as = fmt.Sprintf("\\x%x", nv.Value)
+		nv.Value = "\\x" + as[1:]
+
+	//	rune
+	case []rune, *[]rune:
+		return driver.ErrSkip
+
+	default:
+		return driver.ErrSkip
 
 	}
 	return nil
