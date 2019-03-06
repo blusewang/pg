@@ -4,10 +4,14 @@
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package pg
+package network
 
-import "database/sql"
-
-func init() {
-	sql.Register("postgres", &Driver{})
+type PgColumn struct {
+	Name         string
+	TableOid     uint32
+	Index        uint16
+	TypeOid      uint32
+	Len          uint16
+	TypeModifier uint32
+	Format       uint16
 }
