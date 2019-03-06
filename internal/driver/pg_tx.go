@@ -6,12 +6,45 @@
 
 package driver
 
+import (
+	"database/sql/driver"
+	"errors"
+)
+
 type PgTx struct {
+	pgConn *PgConn
 }
 
-func (t *PgTx) Commit() error {
-	return nil
+func (t *PgTx) Commit() (err error) {
+	if t.pgConn.io.IOError != nil {
+		return driver.ErrBadConn
+	}
+	if t.pgConn.io.IsInTransaction() == false {
+		err = errors.New("this connection is out of transaction")
+	}
+	_, _, _, err = t.pgConn.io.QueryNoArgs("commit")
+	if err != nil {
+		return
+	}
+	if t.pgConn.io.IsInTransaction() {
+		err = errors.New("commit fail")
+	}
+	return
 }
-func (t *PgTx) Rollback() error {
+
+func (t *PgTx) Rollback() (err error) {
+	if t.pgConn.io.IOError != nil {
+		return driver.ErrBadConn
+	}
+	if t.pgConn.io.IsInTransaction() == false {
+		err = errors.New("this connection is out of transaction")
+	}
+	_, _, _, err = t.pgConn.io.QueryNoArgs("rollback")
+	if err != nil {
+		return
+	}
+	if t.pgConn.io.IsInTransaction() {
+		err = errors.New("rollback fail")
+	}
 	return nil
 }

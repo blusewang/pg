@@ -9,6 +9,7 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
 	"reflect"
@@ -32,6 +33,7 @@ func NewPgConn(name string) (c *PgConn, err error) {
 	if err != nil {
 		return
 	}
+	c.stmts = make(map[string]*PgStmt)
 	return
 }
 
@@ -52,13 +54,14 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 	if err != nil {
 		return
 	}
+	c.stmts = make(map[string]*PgStmt)
 	return
 }
 
 type PgConn struct {
-	dsn       *DataSourceName
-	io        *network.PgIO
-	resultSig chan int
+	dsn   *DataSourceName
+	io    *network.PgIO
+	stmts map[string]*PgStmt
 }
 
 // Prepare returns a prepared statement, bound to this connection.
@@ -66,7 +69,7 @@ func (c *PgConn) Prepare(query string) (driver.Stmt, error) {
 	if c.io.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
-	return NewPgStmt(c.io, query, c.dsn)
+	return NewPgStmt(c, query)
 }
 
 // Close invalidates and potentially stops any current
@@ -77,15 +80,44 @@ func (c *PgConn) Prepare(query string) (driver.Stmt, error) {
 // connections and only calls Close when there's a surplus of
 // idle connections, it shouldn't be necessary for drivers to
 // do their own connection caching.
-func (c *PgConn) Close() error {
-	return nil
+func (c *PgConn) Close() (err error) {
+	err = c.io.Terminate()
+	return
 }
 
 // Begin starts and returns a new transaction.
 //
 // Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
-func (c *PgConn) Begin() (driver.Tx, error) {
-	return &PgTx{}, nil
+func (c *PgConn) Begin() (_ driver.Tx, err error) {
+	if c.io.IOError != nil {
+		return nil, driver.ErrBadConn
+	}
+	if c.io.IsInTransaction() {
+		err = errors.New("this connection is in transaction")
+	}
+	_, _, _, err = c.io.QueryNoArgs("begin")
+	if err != nil {
+		return
+	}
+	if !c.io.IsInTransaction() {
+		err = errors.New("begin fail")
+	}
+
+	return &PgTx{pgConn: c}, nil
+}
+
+func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err error) {
+	if len(args) > 0 {
+		stmt, err := NewNoPortalPgStmt(c, query)
+		if err != nil {
+			return nil, err
+		}
+		return stmt.Query(args)
+	} else {
+		var pr = new(PgRows)
+		pr.columns, pr.fieldLen, pr.rows, err = c.io.QueryNoArgs(query)
+		return pr, err
+	}
 }
 
 // NamedValueChecker可以可选地由Conn或Stmt实现。 它为驱动程序提供了更多控制来处理Go和数据库类型，超出了允许的默认值类型。

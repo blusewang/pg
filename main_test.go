@@ -25,6 +25,87 @@ type bluse struct {
 	StrArr   []string
 }
 
+func TestDriver_Query(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	rows, err := db.Query("select * from bluse where id>$1", 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for rows.Next() {
+		var b bluse
+		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws, &b.IntArr, &b.StrArr)
+		log.Println(b, err)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(string(b.Raws))
+	}
+}
+
+func TestDriver_TransactionQuery(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Error(err)
+	}
+	rows, err := tx.Query("select * from bluse where id>$1", 0)
+	if err != nil {
+		t.Error(err)
+	}
+	for rows.Next() {
+		var b bluse
+		err = rows.Scan(&b.Id, &b.Name, &b.Info, &b.CreateAt, &b.Price, &b.UuId, &b.Raws, &b.IntArr, &b.StrArr)
+		log.Println(b, err)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(string(b.Raws))
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestDriver_TransactionExec(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Error(err)
+	}
+	rs, err := tx.Exec("update bluse set price=$1 where id=$2", 4.13, 1)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Println(rs.RowsAffected())
+	log.Println(rs.LastInsertId())
+	err = tx.Rollback()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestDriver_Select(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
@@ -34,6 +115,11 @@ func TestDriver_Select(t *testing.T) {
 	}
 	defer db.Close()
 	stmt, err := db.Prepare("select * from bluse where id>$1")
+	if err != nil {
+		t.Error(err)
+	}
+	stmt2, err := db.Prepare("select * from bluse where id>$1")
+	log.Println(stmt2, err)
 	if err != nil {
 		t.Error(err)
 	}

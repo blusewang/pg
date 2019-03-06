@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
+	"database/sql/driver"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -192,6 +193,48 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 	return
 }
 
+func (pi *PgIO) QueryNoArgs(query string) (cols []PgColumn, fieldLen *[][]uint32, data *[][][]byte, err error) {
+	sq := NewPgMessage(IdentifiesQuery)
+	sq.addString(query)
+	err = pi.send(sq)
+	if err != nil {
+		return
+	}
+
+	fieldLen = new([][]uint32)
+	data = new([][][]byte)
+
+	list, err := pi.receivePgMsg(IdentifiesReadyForQuery)
+	if err != nil {
+		return
+	}
+	for _, v := range list {
+		switch v.Identifies {
+		case IdentifiesDataRow:
+			var rowLen = new([]uint32)
+			var row = new([][]byte)
+			length := v.int16()
+			for i := uint16(0); i < length; i++ {
+				l := v.int32()
+				if l == 4294967295 {
+					// nil
+					*row = append(*row, nil)
+				} else {
+					*row = append(*row, v.bytes(l))
+				}
+				*rowLen = append(*rowLen, l)
+			}
+			*fieldLen = append(*fieldLen, *rowLen)
+			*data = append(*data, *row)
+		case IdentifiesRowDescription:
+			cols = v.columns()
+		case IdentifiesReadyForQuery:
+			pi.txStatus = TransactionStatus(v.byte())
+		}
+	}
+	return
+}
+
 func (pi *PgIO) Parse(name, query string) (cols []PgColumn, parameters []uint32, err error) {
 	reqParse := NewPgMessage(IdentifiesParse)
 	reqParse.addString(name)
@@ -364,4 +407,18 @@ func (pi *PgIO) CancelRequest(network, address string, timeout time.Duration) (e
 	}
 	defer nIO.conn.Close()
 	return
+}
+
+func (pi *PgIO) Terminate() (err error) {
+	rc := NewPgMessage(IdentifiesTerminate)
+	err = pi.send(rc)
+	if err != nil {
+		pi.conn.Close()
+		pi.IOError = driver.ErrBadConn
+	}
+	return
+}
+
+func (pi *PgIO) IsInTransaction() bool {
+	return pi.txStatus == TransactionStatusIdleInTransaction || pi.txStatus == TransactionStatusInFailedTransaction
 }
