@@ -28,7 +28,7 @@ type bluse struct {
 func TestDriver_Query(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	db, err := sql.Open("pg", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
 		t.Error(err)
 	}
@@ -52,7 +52,7 @@ func TestDriver_Query(t *testing.T) {
 func TestDriver_TransactionQuery(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	db, err := sql.Open("pg", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
 		t.Error(err)
 	}
@@ -84,7 +84,7 @@ func TestDriver_TransactionQuery(t *testing.T) {
 func TestDriver_TransactionExec(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	db, err := sql.Open("pg", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
 		t.Error(err)
 	}
@@ -109,7 +109,7 @@ func TestDriver_TransactionExec(t *testing.T) {
 func TestDriver_Select(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	db, err := sql.Open("pg", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
 		t.Error(err)
 	}
@@ -146,7 +146,7 @@ func TestDriver_Select(t *testing.T) {
 func TestDriver_Exec(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	db, err := sql.Open("postgres", "postgresql://bluse:@localhost/bluse?application_name=test")
+	db, err := sql.Open("pg", "postgresql://bluse:@localhost/bluse?application_name=test")
 	if err != nil {
 		t.Error(err)
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	sql.Register("postgres", &driver.PgDriver{})
+	sql.Register("pg", &driver.PgDriver{})
 }
 
 func NewConnector(name string) dr.Connector {

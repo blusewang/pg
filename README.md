@@ -9,6 +9,22 @@
 
 	go get github.com/blusewang/pq
 
+## 使用
+```golang
+
+	db, err := sql.Open("pg", "postgresql://user:password@host_name/database_name?application_name=app_name")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	rows, err := db.Query("select * from bluse where id>$1", 0)
+	if err != nil {
+		return err
+	}
+	...
+
+```
+
 ## 文档
 
 更多的细节及使用示例，参见： <https://godoc.org/github.com/blusewang/pg>.
