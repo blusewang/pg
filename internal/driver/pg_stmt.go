@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
 	"hash/crc32"
-	"log"
 )
 
 func NewPgStmt(conn *PgConn, query string) (st *PgStmt, err error) {
@@ -59,6 +58,9 @@ func (s *PgStmt) Close() error {
 		return driver.ErrBadConn
 	}
 	close(s.resultSig)
+	if s.pgConn.stmts[s.Identifies] != nil {
+		delete(s.pgConn.stmts, s.Identifies)
+	}
 	return s.pgConn.io.CloseParse(s.Identifies)
 }
 
@@ -67,7 +69,6 @@ func (s *PgStmt) NumInput() int {
 }
 
 func (s *PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
-	log.Println("exec")
 	if s.pgConn.io.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
