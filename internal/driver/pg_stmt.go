@@ -30,18 +30,6 @@ func NewPgStmt(conn *PgConn, query string) (st *PgStmt, err error) {
 	return st, err
 }
 
-func NewNoPortalPgStmt(conn *PgConn, query string) (st *PgStmt, err error) {
-	if conn.io.IOError != nil {
-		return nil, driver.ErrBadConn
-	}
-	st = new(PgStmt)
-	st.pgConn = conn
-	st.Sql = query
-	st.columns, st.parameterTypes, err = st.pgConn.io.Parse(st.Identifies, st.Sql)
-	st.resultSig = make(chan int)
-	return st, err
-}
-
 type PgStmt struct {
 	pgConn         *PgConn
 	Identifies     string
