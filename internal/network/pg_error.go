@@ -7,6 +7,7 @@
 package network
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -33,4 +34,9 @@ type PgError struct {
 
 func (e *PgError) Error() string {
 	return fmt.Sprintf("pg %v %v", e.Severity, e.Message)
+}
+
+func (e *PgError) Json() string {
+	raw, _ := json.Marshal(e)
+	return string(raw)
 }

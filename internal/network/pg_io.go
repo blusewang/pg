@@ -14,6 +14,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -38,10 +39,10 @@ type PgIO struct {
 	IOError    error
 }
 
-func (pi *PgIO) md5(s []byte) []byte {
+func (pi *PgIO) md5(s string) string {
 	h := md5.New()
-	h.Write(s)
-	return h.Sum(nil)
+	h.Write([]byte(s))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (pi *PgIO) receivePgMsg(sep Identifies) (ms []PgMessage, err error) {
@@ -71,6 +72,30 @@ func (pi *PgIO) receivePgMsg(sep Identifies) (ms []PgMessage, err error) {
 			return ms, nil
 		}
 	}
+}
+
+func (pi *PgIO) receivePgMsgOnce() (msg PgMessage, err error) {
+	id, err := pi.reader.ReadByte()
+	if err != nil {
+		pi.IOError = err
+		return msg, err
+	}
+	msg.Identifies = Identifies(id)
+	msg.Content, err = pi.reader.Peek(4)
+	if err != nil {
+		return msg, err
+	}
+	msg.Len = binary.BigEndian.Uint32(msg.Content)
+	msg.Content = make([]byte, msg.Len, msg.Len)
+	_, err = io.ReadFull(pi.reader, msg.Content)
+	if err != nil {
+		return msg, err
+	}
+	msg.Position = 4
+	if msg.Identifies == IdentifiesErrorResponse {
+		return msg, msg.ParseError()
+	}
+	return
 }
 
 func (pi *PgIO) send(list ...*PgMessage) (err error) {
@@ -113,11 +138,11 @@ func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
 		return
 	}
 
-	ms, err := pi.receivePgMsg(IdentifiesReadyForQuery)
-	if err != nil {
-		return err
-	}
-	for _, m := range ms {
+	for {
+		m, err := pi.receivePgMsgOnce()
+		if err != nil {
+			return err
+		}
 		switch m.Identifies {
 		case IdentifiesAuth:
 			err = pi.auth(m, p["user"], pwd)
@@ -140,9 +165,9 @@ func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
 			pi.backendKey = m.int32()
 		case IdentifiesReadyForQuery:
 			pi.txStatus = TransactionStatus(m.byte())
+			return nil
 		}
 	}
-	return
 }
 
 func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
@@ -155,6 +180,7 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 		pwdMsg := NewPgMessage(IdentifiesPasswordMessage)
 		pwdMsg.addString(password)
 		err = pi.send(pwdMsg)
+		log.Println(err, pwdMsg, "明文密码")
 		if err != nil {
 			return err
 		}
@@ -171,10 +197,7 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 	case 5:
 		// MD5密码
 		reqPwd := NewPgMessage(IdentifiesPasswordMessage)
-		cipher := pi.md5([]byte(password + user))
-		cipher = append(cipher, msg.bytes(4)...)
-		cipher = append([]byte("md5"), pi.md5(cipher)...)
-		reqPwd.addBytes(cipher)
+		reqPwd.addString("md5" + pi.md5(pi.md5(password+user)+string(msg.bytes(4))))
 
 		err = pi.send(reqPwd)
 		if err != nil {
