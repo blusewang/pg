@@ -35,6 +35,8 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	switch PgType(col.TypeOid) {
 	case PgTypeBool:
 		return string(raw)[0] == 't'
+	case PgTypeText, PgTypeChar, PgTypeVarchar:
+		return string(raw)
 	case PgTypeBytea:
 		var b, _ = parseBytea(raw)
 		return b
@@ -52,41 +54,43 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
+	case PgTypeJson, PgTypeJsonb:
+		return string(raw)
 	case PgTypeArrInt4:
 		var str = string(raw)
 		var arr []int64
-		if strings.HasPrefix(str, "{") {
+		if strings.HasPrefix(str, "{") && len(str) > 2 {
 			str = str[1 : len(str)-1]
-		}
-		for _, v := range strings.Split(str, ",") {
-			if v != "" {
-				n, _ := strconv.ParseInt(v, 0, 64)
-				arr = append(arr, n)
+			for _, v := range strings.Split(str, ",") {
+				if v != "" {
+					n, _ := strconv.ParseInt(v, 0, 64)
+					arr = append(arr, n)
+				}
 			}
 		}
 		return arr
 	case PgTypeArrFloat4, PgTypeArrFloat8:
 		var str = string(raw)
 		var arr []float64
-		if strings.HasPrefix(str, "{") {
+		if strings.HasPrefix(str, "{") && len(str) > 2 {
 			str = str[1 : len(str)-1]
-		}
-		for _, v := range strings.Split(str, ",") {
-			if v != "" {
-				n, _ := strconv.ParseFloat(v, 64)
-				arr = append(arr, n)
+			for _, v := range strings.Split(str, ",") {
+				if v != "" {
+					n, _ := strconv.ParseFloat(v, 64)
+					arr = append(arr, n)
+				}
 			}
 		}
 		return arr
 	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar:
 		var str = string(raw)
 		var arr []string
-		if strings.HasPrefix(str, "{") {
+		if strings.HasPrefix(str, "{") && len(str) > 2 {
 			str = str[2 : len(str)-2]
-		}
-		for _, v := range strings.Split(str, "','") {
-			if v != "" {
-				arr = append(arr, v)
+			for _, v := range strings.Split(str, "','") {
+				if v != "" {
+					arr = append(arr, v)
+				}
 			}
 		}
 		return arr
@@ -180,7 +184,7 @@ func parseTs(currentLocation *time.Location, str string) interface{} {
 	}
 	t, err := ParseTimestamp(currentLocation, str)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return t
 }
