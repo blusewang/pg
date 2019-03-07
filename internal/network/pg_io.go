@@ -14,7 +14,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -66,9 +65,7 @@ func (pi *PgIO) receivePgMsg(sep Identifies) (ms []PgMessage, err error) {
 		}
 		msg.Position = 4
 		ms = append(ms, msg)
-		if msg.Identifies == IdentifiesErrorResponse {
-			return ms, msg.ParseError()
-		} else if msg.Identifies == sep {
+		if msg.Identifies == sep {
 			return ms, nil
 		}
 	}
@@ -180,7 +177,6 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 		pwdMsg := NewPgMessage(IdentifiesPasswordMessage)
 		pwdMsg.addString(password)
 		err = pi.send(pwdMsg)
-		log.Println(err, pwdMsg, "明文密码")
 		if err != nil {
 			return err
 		}
@@ -233,6 +229,8 @@ func (pi *PgIO) QueryNoArgs(query string) (cols []PgColumn, fieldLen *[][]uint32
 	}
 	for _, v := range list {
 		switch v.Identifies {
+		case IdentifiesErrorResponse:
+			err = v.ParseError()
 		case IdentifiesDataRow:
 			var rowLen = new([]uint32)
 			var row = new([][]byte)
@@ -280,6 +278,8 @@ func (pi *PgIO) Parse(name, query string) (cols []PgColumn, parameters []uint32,
 	}
 	for _, v := range list {
 		switch v.Identifies {
+		case IdentifiesErrorResponse:
+			err = v.ParseError()
 		case IdentifiesParameterDescription:
 			var pn = v.int16()
 			for i := uint16(0); i < pn; i++ {
@@ -323,6 +323,8 @@ func (pi *PgIO) ParseExec(name string, args []interface{}) (n int, err error) {
 	}
 	for _, v := range list {
 		switch v.Identifies {
+		case IdentifiesErrorResponse:
+			err = v.ParseError()
 		case IdentifiesCommandComplete:
 			var rs = strings.Split(v.string(), " ")
 			if len(rs) == 2 {
@@ -368,6 +370,8 @@ func (pi *PgIO) ParseQuery(name string, args []interface{}) (fieldLen *[][]uint3
 
 	for _, v := range list {
 		switch v.Identifies {
+		case IdentifiesErrorResponse:
+			err = v.ParseError()
 		case IdentifiesDataRow:
 			var rowLen = new([]uint32)
 			var row = new([][]byte)
@@ -393,7 +397,7 @@ func (pi *PgIO) ParseQuery(name string, args []interface{}) (fieldLen *[][]uint3
 
 func (pi *PgIO) CloseParse(name string) (err error) {
 	rc := NewPgMessage(IdentifiesClose)
-	rc.addByte(IdentifiesParse)
+	rc.addByte('S')
 	rc.addString(name)
 
 	err = pi.send(rc, NewPgMessage(IdentifiesSync))
@@ -407,6 +411,8 @@ func (pi *PgIO) CloseParse(name string) (err error) {
 	for _, v := range list {
 		if v.Identifies == IdentifiesReadyForQuery {
 			pi.txStatus = TransactionStatus(v.byte())
+		} else if v.Identifies == IdentifiesErrorResponse {
+			err = v.ParseError()
 		}
 	}
 	return
