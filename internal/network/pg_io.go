@@ -39,7 +39,7 @@ type PgIO struct {
 	IOError    error
 }
 
-func (pi *PgIO) md5(s string) string {
+func (pi *PgIO) Md5(s string) string {
 	h := md5.New()
 	h.Write([]byte(s))
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -197,7 +197,7 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 	case 5:
 		// MD5密码
 		reqPwd := NewPgMessage(IdentifiesPasswordMessage)
-		reqPwd.addString("md5" + pi.md5(pi.md5(password+user)+string(msg.bytes(4))))
+		reqPwd.addString("md5" + pi.Md5(pi.Md5(password+user)+string(msg.bytes(4))))
 
 		err = pi.send(reqPwd)
 		if err != nil {
@@ -436,7 +436,7 @@ func (pi *PgIO) Terminate() (err error) {
 	rc := NewPgMessage(IdentifiesTerminate)
 	err = pi.send(rc)
 	if err != nil {
-		pi.conn.Close()
+		_ = pi.conn.Close()
 		pi.IOError = driver.ErrBadConn
 	}
 	return
