@@ -8,14 +8,14 @@ package pg
 
 import (
 	"database/sql"
-	dr "database/sql/driver"
-	"github.com/blusewang/pg/internal/driver"
+	"database/sql/driver"
+	dr "github.com/blusewang/pg/internal/driver"
 )
 
 func init() {
-	sql.Register("pg", &driver.PgDriver{})
+	sql.Register("pg", &dr.PgDriver{})
 }
 
-func NewConnector(dataSourceName string) dr.Connector {
-	return &driver.PgConnector{Name: dataSourceName}
+func NewConnector(dataSourceName string) driver.Connector {
+	return &dr.PgConnector{Name: dataSourceName}
 }

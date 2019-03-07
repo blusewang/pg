@@ -39,15 +39,19 @@ type PgStmt struct {
 	resultSig      chan int
 }
 
-func (s *PgStmt) Close() error {
+func (s *PgStmt) Close() (err error) {
 	if s.pgConn.io.IOError != nil {
 		return driver.ErrBadConn
+	}
+	err = s.pgConn.io.CloseParse(s.Identifies)
+	if err != nil {
+		return
 	}
 	close(s.resultSig)
 	if s.pgConn.stmts[s.Identifies] != nil {
 		delete(s.pgConn.stmts, s.Identifies)
 	}
-	return s.pgConn.io.CloseParse(s.Identifies)
+	return nil
 }
 
 func (s *PgStmt) NumInput() int {
@@ -76,7 +80,7 @@ func (s *PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
 	pr.columns = s.columns
 	pr.parameterTypes = s.parameterTypes
 	pr.fieldLen, pr.rows, err = s.pgConn.io.ParseQuery(s.Identifies, as)
-	return pr, nil
+	return pr, err
 }
 
 // ExecContext executes a query that doesn't return rows, such

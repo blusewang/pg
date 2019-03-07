@@ -8,7 +8,7 @@ package driver
 
 import (
 	"database/sql/driver"
-	"errors"
+	"fmt"
 	"github.com/blusewang/pg/internal/network"
 	"io"
 	"math"
@@ -45,8 +45,10 @@ func (pr *PgRows) Close() error {
 
 func (pr *PgRows) Next(dest []driver.Value) error {
 	var rowsLen = len(*pr.rows)
-	if pr.position < 0 || pr.position >= rowsLen {
-		return errors.New("pg_rows position crossing")
+	if rowsLen == 0 {
+		return io.EOF
+	} else if pr.position < 0 || pr.position >= rowsLen {
+		return fmt.Errorf("pg_rows rows length is %v but position is %v", rowsLen, pr.position)
 	} else if pr.position == rowsLen {
 		return io.EOF
 	}
