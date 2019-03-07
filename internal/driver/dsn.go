@@ -77,8 +77,10 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 	if dbName, has := p["dbname"]; has {
 		dsn.Parameter["database"] = dbName
 	}
-	if applicationName, has := p["application_name"]; has {
-		dsn.Parameter[""] = applicationName
+	if appName, has := p["application_name"]; has {
+		dsn.Parameter["application_name"] = appName
+	} else if appName, has := p["fallback_application_name"]; has {
+		dsn.Parameter["application_name"] = appName
 	}
 	if tos, has := p["connect_timeout"]; has {
 		to, err := strconv.Atoi(tos)
@@ -133,7 +135,11 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 
 	for k, v := range query {
 		if len(v) == 1 {
-			dsn.Parameter[k] = v[0]
+			if k == "fallback_application_name" && dsn.Parameter["application_name"] == "" {
+				dsn.Parameter["application_name"] = v[0]
+			} else {
+				dsn.Parameter[k] = v[0]
+			}
 		}
 	}
 
