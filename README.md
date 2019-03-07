@@ -3,11 +3,11 @@
 
 [![GoDoc](https://godoc.org/github.com/blusewang/pg?status.svg)](https://godoc.org/github.com/blusewang/pg)
 [![Build Status](https://travis-ci.org/blusewang/pg.svg?branch=master)](https://travis-ci.org/blusewang/pg)
-[![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/blusewang/pq/blob/master/LICENSE)
+[![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/blusewang/pg/blob/master/LICENSE)
 
 ## 安装
 
-	go get github.com/blusewang/pq
+	go get github.com/blusewang/pg
 
 ## 使用
 ```golang
@@ -32,10 +32,13 @@
 
 ## 特性
 
-* 在Scan() null值时，不需要做额外处理，不会报错。不会因为使用 sql.NullString 等类型而破坏结构。
-* 常见Array类型直接兼容golang的数组类型。如PG的：integer[]，对应golang的：[]int64
-* 数据源格式，既支持键值对，又支持URI。格式遵守：[PG官方规范](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING)
-* 在同一个连接中，使用同一个sql多次sql.Prepare的场景下，自动复用可用的资源。这对web类业务很有用！
+* 在`Scan()`时`null`值兼容。不认可 golang sql包中，对null值的处理方式！
+   * 以字符串字段的`null`值为例：向`Scan()`中传 `string`型的变量，得到 `""`，传 `*string`型的变量，得到 `nil`。
+* 常见`Array`类型直接兼容golang的数组类型。如PG的：`integer[]`，对应golang的：`[]int64`
+* 数据源格式，既支持键值对，又支持URI。格式遵守：[PG官方规范](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING)。
+   * URI格式，支持`pg://`前缀。
+   * 其中用户名、端口、主机名，在数据源中未指定时，有默认值。用户名默认为操作系统当前用户的用户名
+* 在同一个连接中，多次`db.Prepare()`的场景下，自动复用可用的资源。这对web类业务很有用！
 
 ## 协议实现
 - 此驱动更适合服务于Web
@@ -48,8 +51,8 @@
 | <ul><li>- [x] </li></ul> | 取消正在处理的请求 | 必备 |
 | <ul><li>- [x] </li></ul> | 终止 | 必备 |
 | <ul><li>- [ ] </li></ul> | 函数调用 | PG官方推荐使用查询去调用函数 |
-| <ul><li>- [ ] </li></ul> | 异步操作 | 实用性低 |
-| <ul><li>- [ ] </li></ul> | COPY操作 | 实用性低 |
+| <ul><li>- [ ] </li></ul> | 异步操作 | 不常用 |
+| <ul><li>- [ ] </li></ul> | COPY操作 | 不常用 |
 | <ul><li>- [ ] </li></ul> | SSL会话加密 | 低效 |
 | <ul><li>- [ ] </li></ul> | 流复制协议 | 实用性低 |
 | <ul><li>- [ ] </li></ul> | 逻辑流式复制协议 | 实用性低 |
