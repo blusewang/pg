@@ -16,6 +16,6 @@ func init() {
 	sql.Register("pg", &driver.PgDriver{})
 }
 
-func NewConnector(name string) dr.Connector {
-	return &driver.PgConnector{Name: name}
+func NewConnector(dataSourceName string) dr.Connector {
+	return &driver.PgConnector{Name: dataSourceName}
 }

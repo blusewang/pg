@@ -98,12 +98,15 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 	if err != nil {
 		return
 	}
-	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+	if u.Scheme != "postgres" && u.Scheme != "postgresql" && u.Scheme != "pg" {
 		err = fmt.Errorf("invalid connection protocol: %s", u.Scheme)
 		return
 	}
 	if u.Hostname() != "" {
 		dsn.host = u.Hostname()
+	}
+	if u.Port() != "" {
+		dsn.port = u.Port()
 	}
 	if u.User.Username() != "" {
 		dsn.Parameter["user"] = u.User.Username()
