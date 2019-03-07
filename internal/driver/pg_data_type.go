@@ -54,7 +54,7 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case PgTypeJson, PgTypeJsonb:
+	case PgTypeJson, PgTypeJsonb, PgTypeUuid, PgTypePoint:
 		return string(raw)
 	case PgTypeArrInt4:
 		var str = string(raw)
