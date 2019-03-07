@@ -107,17 +107,11 @@ func (c *PgConn) Begin() (_ driver.Tx, err error) {
 }
 
 func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err error) {
-	if len(args) > 0 {
-		stmt, err := NewNoPortalPgStmt(c, query)
-		if err != nil {
-			return nil, err
-		}
-		return stmt.Query(args)
-	} else {
-		var pr = new(PgRows)
-		pr.columns, pr.fieldLen, pr.rows, err = c.io.QueryNoArgs(query)
-		return pr, err
+	stmt, err := NewPgStmt(c, query)
+	if err != nil {
+		return nil, err
 	}
+	return stmt.Query(args)
 }
 
 // NamedValueChecker可以可选地由Conn或Stmt实现。 它为驱动程序提供了更多控制来处理Go和数据库类型，超出了允许的默认值类型。
