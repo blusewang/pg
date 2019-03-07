@@ -6,8 +6,6 @@
 
 package network
 
-import "log"
-
 type TransactionStatus byte
 
 const (
@@ -15,20 +13,6 @@ const (
 	TransactionStatusIdleInTransaction   = 'T'
 	TransactionStatusInFailedTransaction = 'E'
 )
-
-func (t TransactionStatus) String() string {
-	switch t {
-	case TransactionStatusIdle:
-		return "idle"
-	case TransactionStatusIdleInTransaction:
-		return "idle in transaction"
-	case TransactionStatusInFailedTransaction:
-		return "in a failed transaction"
-	default:
-		log.Panicf("unknown transactionStatus %d", t)
-		return ""
-	}
-}
 
 type Identifies byte
 

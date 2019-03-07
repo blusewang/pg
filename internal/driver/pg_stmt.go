@@ -9,16 +9,14 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"github.com/blusewang/pg/internal/network"
-	"hash/crc32"
 )
 
 func NewPgStmt(conn *PgConn, query string) (st *PgStmt, err error) {
 	if conn.io.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
-	var id = fmt.Sprintf("%x", crc32.ChecksumIEEE([]byte(query)))
+	var id = conn.io.Md5(query)
 	st = conn.stmts[id]
 	if st == nil {
 		st = new(PgStmt)
