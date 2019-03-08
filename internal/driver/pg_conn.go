@@ -149,11 +149,29 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *string:
 		nv.Value = reflect.ValueOf(nv.Value).Elem().String()
 	case []string:
-		var as = fmt.Sprintf("%v", nv.Value)
-		nv.Value = "{'" + strings.Replace(as[1:len(as)-1], " ", "','", -1) + "'}"
+		var str = "{"
+		for _, s := range nv.Value.([]string) {
+			if strings.Contains(s, ",") {
+				s = strings.Replace(s, `"`, `\\"`, -1)
+				s = strings.Replace(s, `'`, `\'`, -1)
+				str += `"` + s + `",`
+			} else {
+				str += s + ","
+			}
+		}
+		nv.Value = str[:len(str)-1] + "}"
 	case *[]string:
-		var as = fmt.Sprintf("%v", nv.Value)
-		nv.Value = "{'" + strings.Replace(as[2:len(as)-1], " ", "','", -1) + "'}"
+		var str = "{"
+		for _, s := range *nv.Value.(*[]string) {
+			if strings.Contains(s, ",") {
+				s = strings.Replace(s, `"`, `\\"`, -1)
+				s = strings.Replace(s, `'`, `\'`, -1)
+				str += `"` + s + `",`
+			} else {
+				str += s + ","
+			}
+		}
+		nv.Value = str[:len(str)-1] + "}"
 
 	//	int
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint64, uintptr:

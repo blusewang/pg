@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -85,10 +86,16 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar:
 		var str = string(raw)
 		var arr []string
+		log.Println(str)
 		if strings.HasPrefix(str, "{") && len(str) > 2 {
-			str = str[2 : len(str)-2]
-			for _, v := range strings.Split(str, "','") {
+			str = str[1 : len(str)-1]
+			for _, v := range strings.Split(str, ",") {
 				if v != "" {
+					log.Println(v)
+					if strings.HasPrefix(v, `"`) {
+						v = v[1 : len(v)-1]
+					}
+					log.Println(v)
 					arr = append(arr, v)
 				}
 			}
