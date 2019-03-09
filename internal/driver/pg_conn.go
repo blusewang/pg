@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -193,7 +192,6 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case []int, []int8, []int16, []int64, []uint, []uint16, []uint64, []uintptr:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
-		log.Println(nv.Value)
 	case *[]int, *[]int8, *[]int16, *[]int64, *[]uint, *[]uint16, *[]uint64, *[]uintptr:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
