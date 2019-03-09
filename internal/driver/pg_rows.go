@@ -99,7 +99,7 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 		return reflect.TypeOf(int64(0))
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		return reflect.TypeOf(float64(0))
-	case PgTypeText, PgTypeVarchar, PgTypeChar, PgTypeUuid, PgTypeJson, PgTypeJsonb:
+	case PgTypeText, PgTypeVarchar, PgTypeChar, PgTypeUuid, PgTypeJson, PgTypeJsonb, PgTypePoint:
 		return reflect.TypeOf("")
 
 	case PgTypeArrBool:

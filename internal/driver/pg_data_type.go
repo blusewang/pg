@@ -54,7 +54,7 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case PgTypeJson, PgTypeJsonb:
+	case PgTypeJson, PgTypeJsonb, PgTypeUuid, PgTypePoint:
 		return string(raw)
 	case PgTypeArrInt4:
 		var str = string(raw)
@@ -83,19 +83,58 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 		}
 		return arr
 	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar:
-		var str = string(raw)
-		var arr []string
-		if strings.HasPrefix(str, "{") && len(str) > 2 {
-			str = str[2 : len(str)-2]
-			for _, v := range strings.Split(str, "','") {
-				if v != "" {
-					arr = append(arr, v)
-				}
-			}
-		}
-		return arr
+		var ss = pgStringArr{Raw: bytes.Runes(raw)}
+		ss.parse()
+		return ss.rs
 	default:
 		return raw
+	}
+}
+
+type pgStringArr struct {
+	Raw      []rune
+	position int
+	buf      []rune
+	rs       []string
+}
+
+func (sa *pgStringArr) parse() {
+	var length = len(sa.Raw)
+	if length < 3 {
+		return
+	}
+	if sa.Raw[0] != '{' {
+		return
+	}
+	sa.position = 1
+	for {
+		if sa.position == length-1 {
+			break
+		}
+		if sa.Raw[sa.position] == '"' {
+			sa.position += 1
+			sa.readUtil('"')
+			var str = string(sa.buf)
+			str = strings.Replace(str, `\'`, `'`, -1)
+			str = strings.Replace(str, `\"`, `"`, -1)
+			sa.rs = append(sa.rs, str)
+		} else {
+			sa.readUtil(',')
+			sa.rs = append(sa.rs, string(sa.buf))
+		}
+	}
+}
+
+func (sa *pgStringArr) readUtil(r rune) {
+	sa.buf = []rune{}
+	for {
+		var rr = sa.Raw[sa.position]
+		sa.position++
+		if rr == r && sa.Raw[sa.position-2] != '\\' {
+			break
+		} else {
+			sa.buf = append(sa.buf, rr)
+		}
 	}
 }
 
