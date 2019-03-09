@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -149,32 +150,40 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *string:
 		nv.Value = reflect.ValueOf(nv.Value).Elem().String()
 	case []string:
-		var str = "{"
-		for _, s := range nv.Value.([]string) {
-			s = strings.Replace(s, `"`, `\"`, -1)
-			s = strings.Replace(s, `'`, `\'`, -1)
-			if strings.Contains(s, ",") {
-				str += `"` + s + `",`
-			} else {
-				str += s + ","
+		if len(nv.Value.([]string)) > 0 {
+			var str = "{"
+			for _, s := range nv.Value.([]string) {
+				s = strings.Replace(s, `"`, `\"`, -1)
+				s = strings.Replace(s, `'`, `\'`, -1)
+				if strings.Contains(s, ",") {
+					str += `"` + s + `",`
+				} else {
+					str += s + ","
+				}
 			}
+			nv.Value = str[:len(str)-1] + "}"
+		} else {
+			nv.Value = "{}"
 		}
-		nv.Value = str[:len(str)-1] + "}"
 	case *[]string:
 		if nv.Value == nil {
 			return nil
 		}
-		var str = "{"
-		for _, s := range *nv.Value.(*[]string) {
-			s = strings.Replace(s, `"`, `\"`, -1)
-			s = strings.Replace(s, `'`, `\'`, -1)
-			if strings.Contains(s, ",") {
-				str += `"` + s + `",`
-			} else {
-				str += s + ","
+		if len(*nv.Value.(*[]string)) > 0 {
+			var str = "{"
+			for _, s := range *nv.Value.(*[]string) {
+				s = strings.Replace(s, `"`, `\"`, -1)
+				s = strings.Replace(s, `'`, `\'`, -1)
+				if strings.Contains(s, ",") {
+					str += `"` + s + `",`
+				} else {
+					str += s + ","
+				}
 			}
+			nv.Value = str[:len(str)-1] + "}"
+		} else {
+			nv.Value = "{}"
 		}
-		nv.Value = str[:len(str)-1] + "}"
 
 	//	int
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint64, uintptr:
@@ -184,6 +193,7 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case []int, []int8, []int16, []int64, []uint, []uint16, []uint64, []uintptr:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
+		log.Println(nv.Value)
 	case *[]int, *[]int8, *[]int16, *[]int64, *[]uint, *[]uint16, *[]uint64, *[]uintptr:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
