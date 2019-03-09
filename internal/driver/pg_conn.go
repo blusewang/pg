@@ -149,32 +149,40 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *string:
 		nv.Value = reflect.ValueOf(nv.Value).Elem().String()
 	case []string:
-		var str = "{"
-		for _, s := range nv.Value.([]string) {
-			s = strings.Replace(s, `"`, `\"`, -1)
-			s = strings.Replace(s, `'`, `\'`, -1)
-			if strings.Contains(s, ",") {
-				str += `"` + s + `",`
-			} else {
-				str += s + ","
+		if len(nv.Value.([]string)) > 0 {
+			var str = "{"
+			for _, s := range nv.Value.([]string) {
+				s = strings.Replace(s, `"`, `\"`, -1)
+				s = strings.Replace(s, `'`, `\'`, -1)
+				if strings.Contains(s, ",") {
+					str += `"` + s + `",`
+				} else {
+					str += s + ","
+				}
 			}
+			nv.Value = str[:len(str)-1] + "}"
+		} else {
+			nv.Value = "{}"
 		}
-		nv.Value = str[:len(str)-1] + "}"
 	case *[]string:
 		if nv.Value == nil {
 			return nil
 		}
-		var str = "{"
-		for _, s := range *nv.Value.(*[]string) {
-			s = strings.Replace(s, `"`, `\"`, -1)
-			s = strings.Replace(s, `'`, `\'`, -1)
-			if strings.Contains(s, ",") {
-				str += `"` + s + `",`
-			} else {
-				str += s + ","
+		if len(*nv.Value.(*[]string)) > 0 {
+			var str = "{"
+			for _, s := range *nv.Value.(*[]string) {
+				s = strings.Replace(s, `"`, `\"`, -1)
+				s = strings.Replace(s, `'`, `\'`, -1)
+				if strings.Contains(s, ",") {
+					str += `"` + s + `",`
+				} else {
+					str += s + ","
+				}
 			}
+			nv.Value = str[:len(str)-1] + "}"
+		} else {
+			nv.Value = "{}"
 		}
-		nv.Value = str[:len(str)-1] + "}"
 
 	//	int
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint64, uintptr:
