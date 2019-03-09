@@ -25,7 +25,6 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	if fieldLen == 4294967295 {
 		// is nil
 		//return nil
-		//log.Println(raw,col.Name,col.TypeOid,col.Len)
 		//return []byte{}
 	}
 	if col.Format != 0 {
@@ -108,7 +107,7 @@ func (sa *pgStringArr) parse() {
 	}
 	sa.position = 1
 	for {
-		if sa.position == length-1 {
+		if sa.position >= length-1 {
 			break
 		}
 		if sa.Raw[sa.position] == '"' {
@@ -131,6 +130,8 @@ func (sa *pgStringArr) readUtil(r rune) {
 		var rr = sa.Raw[sa.position]
 		sa.position++
 		if rr == r && sa.Raw[sa.position-2] != '\\' {
+			break
+		} else if rr == '}' && sa.Raw[sa.position-2] != '\\' {
 			break
 		} else {
 			sa.buf = append(sa.buf, rr)
