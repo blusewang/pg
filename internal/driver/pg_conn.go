@@ -151,9 +151,9 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case []string:
 		var str = "{"
 		for _, s := range nv.Value.([]string) {
+			s = strings.Replace(s, `"`, `\"`, -1)
+			s = strings.Replace(s, `'`, `\'`, -1)
 			if strings.Contains(s, ",") {
-				s = strings.Replace(s, `"`, `\\"`, -1)
-				s = strings.Replace(s, `'`, `\'`, -1)
 				str += `"` + s + `",`
 			} else {
 				str += s + ","
@@ -161,11 +161,14 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		}
 		nv.Value = str[:len(str)-1] + "}"
 	case *[]string:
+		if nv.Value == nil {
+			return nil
+		}
 		var str = "{"
 		for _, s := range *nv.Value.(*[]string) {
+			s = strings.Replace(s, `"`, `\"`, -1)
+			s = strings.Replace(s, `'`, `\'`, -1)
 			if strings.Contains(s, ",") {
-				s = strings.Replace(s, `"`, `\\"`, -1)
-				s = strings.Replace(s, `'`, `\'`, -1)
 				str += `"` + s + `",`
 			} else {
 				str += s + ","
