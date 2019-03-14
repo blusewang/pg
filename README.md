@@ -41,7 +41,7 @@
 ## 特性
 
 * 在`Scan()`时，对`null`值宽容。不推荐使用`sql.Null`系列类型，接受`null`值！
-   * 以字符串字段的`null`值为例：向`Scan()`中传 `string`型的变量，得到 `""`，传 `*string`型的变量，得到 `nil`。
+   * 以字符串字段的`null`值为例：向`Scan()`中传 `string`型的变量，得到 `""`，传 `*string`型的变量，得到 `""`。
 * 常见`Array`类型直接兼容golang的数组类型。如PG的：`integer[]`，对应golang的：`[]int64`
 * 数据源格式，既支持键值对，又支持URI。书写格式遵守：[PG官方规范](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING)。
    * URI格式，支持`pg://`前缀。
