@@ -185,14 +185,14 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		}
 
 	//	int
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint64, uintptr:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint64:
 		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", nv.Value), 0, 64)
-	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint64, *uintptr:
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint64:
 		nv.Value, _ = strconv.ParseInt(fmt.Sprintf("%d", reflect.ValueOf(nv.Value).Elem().Int()), 0, 64)
-	case []int, []int8, []int16, []int64, []uint, []uint16, []uint64, []uintptr:
+	case []int, []int8, []int16, []int64, []uint, []uint16, []uint64:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
-	case *[]int, *[]int8, *[]int16, *[]int64, *[]uint, *[]uint16, *[]uint64, *[]uintptr:
+	case *[]int, *[]int8, *[]int16, *[]int64, *[]uint, *[]uint16, *[]uint64:
 		var as = fmt.Sprintf("%v", nv.Value)
 		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
 
@@ -215,12 +215,8 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		var as = fmt.Sprintf("\\x%x", nv.Value)
 		nv.Value = "\\x" + as[1:]
 
-	//	rune
-	case []rune, *[]rune:
-		return driver.ErrSkip
-
 	default:
-		return driver.ErrSkip
+		return driver.ErrRemoveArgument
 
 	}
 	return nil
