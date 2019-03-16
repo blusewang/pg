@@ -19,6 +19,7 @@ import (
 const headerSize = 4
 
 type PgRows struct {
+	isStrict       bool
 	location       *time.Location
 	columns        []network.PgColumn
 	parameterTypes []uint32
@@ -53,7 +54,7 @@ func (pr *PgRows) Next(dest []driver.Value) error {
 		return io.EOF
 	}
 	for k, v := range (*pr.rows)[pr.position] {
-		dest[k] = convert(v, pr.columns[k], (*pr.fieldLen)[pr.position][k], pr.location)
+		dest[k] = convert(v, pr.columns[k], (*pr.fieldLen)[pr.position][k], pr.location, pr.isStrict)
 	}
 	pr.position += 1
 	return nil

@@ -123,6 +123,12 @@ func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err er
 //
 //如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
 func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
+	if nv.Value == nil {
+		return nil
+	} else if !reflect.ValueOf(nv.Value).Elem().CanAddr() {
+		nv.Value = nil
+		return nil
+	}
 	switch nv.Value.(type) {
 
 	// bool

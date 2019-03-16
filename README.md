@@ -41,11 +41,13 @@
 ## 特性
 
 * 在`Scan()`时，对`null`值宽容。不推荐使用`sql.Null`系列类型，接受`null`值！
-   * 以字符串字段的`null`值为例：向`Scan()`中传 `string`型的变量，得到 `""`，传 `*string`型的变量，得到 `""`。
+   * 以字符串字段的`null`值为例：向`Scan()`中传 `string`型的指针，得到 `""`，传 `*string`型的指针，得到 `""`。
 * 常见`Array`类型直接兼容golang的数组类型。如PG的：`integer[]`，对应golang的：`[]int64`
 * 数据源格式，既支持键值对，又支持URI。书写格式遵守：[PG官方规范](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING)。
    * URI格式，支持`pg://`前缀。
    * 其中用户名、端口、主机名，在数据源中未指定时，有默认值。用户名默认为操作系统当前用户的用户名
+   * DSN配置中，`strict`项是独立于PG后端之外的。它默认为`false`。
+      * 若置为`true`；在遇到`null`值时，送入`Scan()`中的变量必须是指针类型的指针！否则在遇到`null`值时，会`panic`！
 * 积极标记并缓存所有预备语句[包括`db.Query`、`db.Exec`、`db.Prepare()`等的语句]，遇到相同的语句请求时，自动复用。**这能提高1倍的执行速度！！！**
    * 为了发挥好此功能，需要最大可能地允许数据库连接空闲。
    * 配置上推荐将`sql.SetMaxIdleConns(x)`、`sql.SetMaxOpenConns(x)`两处的x设置为相同的值！
