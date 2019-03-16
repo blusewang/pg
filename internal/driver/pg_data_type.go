@@ -21,11 +21,10 @@ import (
 )
 
 // 针对需改造的数据做转换
-func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.Location) driver.Value {
-	if fieldLen == 4294967295 {
+func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.Location, isStrict bool) driver.Value {
+	if fieldLen == 4294967295 && isStrict {
 		// is nil
-		//return nil
-		//return []byte{}
+		return nil
 	}
 	if col.Format != 0 {
 		panic("not support binary data")

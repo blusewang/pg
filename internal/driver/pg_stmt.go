@@ -77,9 +77,12 @@ func (s *PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
 	}
 
 	var pr = new(PgRows)
+	pr.isStrict = s.pgConn.dsn.IsStrict
+	pr.location = s.pgConn.io.Location
 	pr.columns = s.columns
 	pr.parameterTypes = s.parameterTypes
 	pr.fieldLen, pr.rows, err = s.pgConn.io.ParseQuery(s.Identifies, as)
+
 	return pr, err
 }
 
@@ -118,6 +121,7 @@ func (s *PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ 
 	}
 
 	var pr = new(PgRows)
+	pr.isStrict = s.pgConn.dsn.IsStrict
 	pr.location = s.pgConn.io.Location
 	pr.columns = s.columns
 	pr.parameterTypes = s.parameterTypes

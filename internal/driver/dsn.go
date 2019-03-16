@@ -22,6 +22,7 @@ type DataSourceName struct {
 	password       string
 	connectTimeout time.Duration
 	Parameter      map[string]string
+	IsStrict       bool
 }
 
 func ParseDSN(connectStr string) (dsn *DataSourceName, err error) {
@@ -64,23 +65,30 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 	}
 	if host, has := p["host"]; has {
 		dsn.host = host
+		delete(p, "host")
 	}
 	if port, has := p["port"]; has {
 		dsn.port = port
+		delete(p, "port")
 	}
 	if u, has := p["user"]; has {
 		dsn.Parameter["user"] = u
+		delete(p, "user")
 	}
 	if password, has := p["password"]; has {
 		dsn.password = password
+		delete(p, "password")
 	}
 	if dbName, has := p["dbname"]; has {
 		dsn.Parameter["database"] = dbName
+		delete(p, "dbname")
 	}
 	if appName, has := p["application_name"]; has {
 		dsn.Parameter["application_name"] = appName
+		delete(p, "application_name")
 	} else if appName, has := p["fallback_application_name"]; has {
 		dsn.Parameter["application_name"] = appName
+		delete(p, "fallback_application_name")
 	}
 	if tos, has := p["connect_timeout"]; has {
 		to, err := strconv.Atoi(tos)
@@ -88,9 +96,18 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 			return err
 		}
 		dsn.connectTimeout = time.Duration(to) * time.Second
+		delete(p, "connect_timeout")
 	}
 	if host, has := p["host"]; has {
 		dsn.host = host
+		delete(p, "host")
+	}
+	if strict, has := p["strict"]; has {
+		dsn.IsStrict = strict == "true"
+		delete(p, "strict")
+	}
+	for k, v := range p {
+		dsn.Parameter[k] = v
 	}
 	return
 }
@@ -137,6 +154,8 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 		if len(v) == 1 {
 			if k == "fallback_application_name" && dsn.Parameter["application_name"] == "" {
 				dsn.Parameter["application_name"] = v[0]
+			} else if k == "strict" {
+				dsn.IsStrict = v[0] == "true"
 			} else {
 				dsn.Parameter[k] = v[0]
 			}
