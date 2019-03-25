@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func NewPgConn(name string) (c *PgConn, err error) {
@@ -125,9 +126,12 @@ func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err er
 func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	if nv.Value == nil {
 		return nil
-	} else if !reflect.ValueOf(nv.Value).Elem().CanAddr() {
-		nv.Value = nil
-		return nil
+	} else {
+		var vi = reflect.ValueOf(nv.Value)
+		if vi.Kind() == reflect.Ptr && vi.IsNil() {
+			nv.Value = nil
+			return nil
+		}
 	}
 	switch nv.Value.(type) {
 
@@ -220,6 +224,10 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *[]byte:
 		var as = fmt.Sprintf("\\x%x", nv.Value)
 		nv.Value = "\\x" + as[1:]
+
+	// time
+	case time.Time:
+	case *time.Time:
 
 	default:
 		return driver.ErrRemoveArgument
