@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -156,6 +157,7 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
 
 	//	string
+	case string:
 	case *string:
 		nv.Value = reflect.ValueOf(nv.Value).Elem().String()
 	case []string:
@@ -230,6 +232,7 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *time.Time:
 
 	default:
+		log.Println("drop", reflect.TypeOf(nv.Value).Name(), nv)
 		return driver.ErrRemoveArgument
 
 	}

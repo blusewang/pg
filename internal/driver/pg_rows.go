@@ -7,6 +7,7 @@
 package driver
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
@@ -47,7 +48,7 @@ func (pr *PgRows) Close() error {
 func (pr *PgRows) Next(dest []driver.Value) error {
 	var rowsLen = len(*pr.rows)
 	if rowsLen == 0 {
-		return io.EOF
+		return sql.ErrNoRows
 	} else if pr.position < 0 || pr.position >= rowsLen {
 		return fmt.Errorf("pg_rows rows length is %v but position is %v", rowsLen, pr.position)
 	} else if pr.position == rowsLen {
