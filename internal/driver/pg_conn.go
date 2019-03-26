@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -232,9 +231,7 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *time.Time:
 
 	default:
-		log.Println("drop", reflect.TypeOf(nv.Value).Name(), nv)
-		return driver.ErrRemoveArgument
-
+		nv.Value = fmt.Sprintf("%v", nv.Value)
 	}
 	return nil
 }
