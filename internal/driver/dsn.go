@@ -150,18 +150,26 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 		query.Del("connect_timeout")
 	}
 
-	for k, v := range query {
-		if len(v) == 1 {
-			if k == "fallback_application_name" && dsn.Parameter["application_name"] == "" {
-				dsn.Parameter["application_name"] = v[0]
-			} else if k == "strict" {
-				dsn.IsStrict = v[0] == "true"
-			} else {
-				dsn.Parameter[k] = v[0]
-			}
-		}
+	if appName, has := query["application_name"]; has {
+		dsn.Parameter["application_name"] = appName[0]
+		delete(query, "application_name")
+	} else if appName, has := query["fallback_application_name"]; has {
+		dsn.Parameter["application_name"] = appName[0]
+		delete(query, "fallback_application_name")
 	}
 
+	if host, has := query["host"]; has {
+		dsn.host = host[0]
+		delete(query, "host")
+	}
+	if strict, has := query["strict"]; has {
+		dsn.IsStrict = strict[0] == "true"
+		delete(query, "strict")
+	}
+
+	for k, v := range query {
+		dsn.Parameter[k] = v[0]
+	}
 	return
 }
 
