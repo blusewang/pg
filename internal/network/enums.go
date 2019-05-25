@@ -54,7 +54,7 @@ const (
 	IdentifiesRowDescription       = 'T'
 	IdentifiesSASLInitialResponse  = 'p'
 	IdentifiesSASLResponse         = 'p'
-	IdentifiesSSLRequest           = '8'
+	IdentifiesSSLRequest           = 0
 	IdentifiesStartupMessage       = 0
 	IdentifiesSync                 = 'S'
 	IdentifiesTerminate            = 'X'

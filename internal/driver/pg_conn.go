@@ -11,6 +11,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"github.com/blusewang/pg/internal/helper"
 	"github.com/blusewang/pg/internal/network"
 	"reflect"
 	"strconv"
@@ -20,17 +21,17 @@ import (
 
 func NewPgConn(name string) (c *PgConn, err error) {
 	c = new(PgConn)
-	c.dsn, err = ParseDSN(name)
+	c.dsn, err = helper.ParseDSN(name)
 	if err != nil {
 		return
 	}
 
-	c.io = network.NewPgIO()
+	c.io = network.NewPgIO(c.dsn)
 	err = c.io.Dial(c.dsn.Address())
 	if err != nil {
 		return
 	}
-	err = c.io.StartUp(c.dsn.Parameter, c.dsn.password)
+	err = c.io.StartUp()
 	if err != nil {
 		return
 	}
@@ -40,18 +41,18 @@ func NewPgConn(name string) (c *PgConn, err error) {
 
 func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 	c = new(PgConn)
-	c.dsn, err = ParseDSN(name)
+	c.dsn, err = helper.ParseDSN(name)
 	if err != nil {
 		return
 	}
 
-	c.io = network.NewPgIO()
+	c.io = network.NewPgIO(c.dsn)
 	var net, addr, timeout = c.dsn.Address()
 	err = c.io.DialContext(ctx, net, addr, timeout)
 	if err != nil {
 		return
 	}
-	err = c.io.StartUp(c.dsn.Parameter, c.dsn.password)
+	err = c.io.StartUp()
 	if err != nil {
 		return
 	}
@@ -60,7 +61,7 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 }
 
 type PgConn struct {
-	dsn   *DataSourceName
+	dsn   *helper.DataSourceName
 	io    *network.PgIO
 	stmts map[string]*PgStmt
 }
@@ -237,5 +238,5 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 }
 
 func (c *PgConn) cancel() {
-	_ = c.io.CancelRequest(c.dsn.Address())
+	_ = c.io.CancelRequest()
 }
