@@ -155,6 +155,9 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 	for k, v := range p {
 		dsn.Parameter[k] = v
 	}
+	if dsn.Parameter["host"] != "" {
+		delete(dsn.Parameter, "host")
+	}
 	return
 }
 
@@ -220,6 +223,9 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 
 	for k, v := range qm {
 		dsn.Parameter[k] = v
+	}
+	if dsn.Parameter["host"] != "" {
+		delete(dsn.Parameter, "host")
 	}
 	return
 }

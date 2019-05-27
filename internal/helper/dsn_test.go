@@ -13,21 +13,11 @@ import (
 )
 
 func TestParseDSNUseURI(t *testing.T) {
-	name := DataSourceName{
-		Host:           "postgresql.com",
-		Port:           "5432",
-		Password:       "pass.word",
-		ConnectTimeout: time.Duration(10) * time.Second,
-	}
-	dsn, err := ParseDSN("postgresql://postgres:pass.word@postgresql.com:5432/db_name?application_name=application_name&connect_timeout=10")
+	dsn, err := ParseDSN("pg://cashier:@:33521/cashier?host=/tmp&application_name=cashier_production&strict=true")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dsn.Host != name.Host {
-		t.Fail()
-	}
-	log.Println(dsn.Address())
-	log.Println(dsn.Parameter)
+	log.Println(dsn)
 }
 
 func TestParseDSNUseURIHasSock(t *testing.T) {
