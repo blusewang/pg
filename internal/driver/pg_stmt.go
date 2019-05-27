@@ -139,7 +139,7 @@ func (s *PgStmt) watchCancel(ctx context.Context) {
 }
 
 func (s *PgStmt) cancel() {
-	_ = s.pgConn.io.CancelRequest(s.pgConn.dsn.Address())
+	_ = s.pgConn.io.CancelRequest()
 }
 
 func (s *PgStmt) complete() {

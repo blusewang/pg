@@ -10,9 +10,11 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
+	"crypto/tls"
 	"database/sql/driver"
 	"encoding/binary"
 	"fmt"
+	"github.com/blusewang/pg/internal/helper"
 	"io"
 	"net"
 	"strconv"
@@ -20,14 +22,17 @@ import (
 	"time"
 )
 
-func NewPgIO() *PgIO {
+func NewPgIO(dsn *helper.DataSourceName) *PgIO {
 	pi := new(PgIO)
+	pi.dsn = dsn
 	pi.ServerConf = make(map[string]string)
 	pi.IOError = nil
 	return pi
 }
 
 type PgIO struct {
+	dsn        *helper.DataSourceName
+	tlsConfig  tls.Config
 	conn       net.Conn
 	reader     *bufio.Reader
 	txStatus   TransactionStatus
@@ -121,10 +126,17 @@ func (pi *PgIO) DialContext(context context.Context, network, address string, ti
 	return
 }
 
-func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
+func (pi *PgIO) StartUp() (err error) {
+	if pi.dsn.SSL.Mode != "disable" && pi.dsn.SSL.Mode != "allow" {
+		err = pi.ssl()
+		if err != nil {
+			return
+		}
+	}
+
 	bs := NewPgMessage(IdentifiesStartupMessage)
 	bs.addInt32(196608)
-	for k, v := range p {
+	for k, v := range pi.dsn.Parameter {
 		bs.addString(k)
 		bs.addString(v)
 	}
@@ -142,7 +154,7 @@ func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
 		}
 		switch m.Identifies {
 		case IdentifiesAuth:
-			err = pi.auth(m, p["user"], pwd)
+			err = pi.auth(m)
 			if err != nil {
 				return err
 			}
@@ -167,7 +179,7 @@ func (pi *PgIO) StartUp(p map[string]string, pwd string) (err error) {
 	}
 }
 
-func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
+func (pi *PgIO) auth(msg PgMessage) (err error) {
 	switch code := msg.int32(); code {
 	case 0:
 		// OK
@@ -175,7 +187,7 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 	case 3:
 		// 明文密码
 		pwdMsg := NewPgMessage(IdentifiesPasswordMessage)
-		pwdMsg.addString(password)
+		pwdMsg.addString(pi.dsn.Password)
 		err = pi.send(pwdMsg)
 		if err != nil {
 			return err
@@ -193,7 +205,7 @@ func (pi *PgIO) auth(msg PgMessage, user, password string) (err error) {
 	case 5:
 		// MD5密码
 		reqPwd := NewPgMessage(IdentifiesPasswordMessage)
-		reqPwd.addString("md5" + pi.Md5(pi.Md5(password+user)+string(msg.bytes(4))))
+		reqPwd.addString("md5" + pi.Md5(pi.Md5(pi.dsn.Password+pi.dsn.Parameter["user"])+string(msg.bytes(4))))
 
 		err = pi.send(reqPwd)
 		if err != nil {
@@ -418,9 +430,9 @@ func (pi *PgIO) CloseParse(name string) (err error) {
 	return
 }
 
-func (pi *PgIO) CancelRequest(network, address string, timeout time.Duration) (err error) {
-	var nIO = NewPgIO()
-	err = nIO.Dial(network, address, timeout)
+func (pi *PgIO) CancelRequest() (err error) {
+	var nIO = NewPgIO(pi.dsn)
+	err = nIO.Dial(pi.dsn.Address())
 	if err != nil {
 		return
 	}
