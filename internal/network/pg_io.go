@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
+	"crypto/tls"
 	"database/sql/driver"
 	"encoding/binary"
 	"fmt"
@@ -31,6 +32,7 @@ func NewPgIO(dsn *helper.DataSourceName) *PgIO {
 
 type PgIO struct {
 	dsn        *helper.DataSourceName
+	tlsConfig  tls.Config
 	conn       net.Conn
 	reader     *bufio.Reader
 	txStatus   TransactionStatus
@@ -125,9 +127,11 @@ func (pi *PgIO) DialContext(context context.Context, network, address string, ti
 }
 
 func (pi *PgIO) StartUp() (err error) {
-	err = pi.ssl()
-	if err != nil {
-		return
+	if pi.dsn.SSL.Mode != "disable" && pi.dsn.SSL.Mode != "allow" {
+		err = pi.ssl()
+		if err != nil {
+			return
+		}
 	}
 
 	bs := NewPgMessage(IdentifiesStartupMessage)

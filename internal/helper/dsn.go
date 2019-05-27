@@ -226,7 +226,9 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 
 func (dsn *DataSourceName) pickSSLSetting(envs *map[string]string) {
 	if envs != nil {
-		if v, has := (*envs)["sslmode"]; has {
+		if strings.HasPrefix(dsn.Host, "/") {
+			dsn.SSL.Mode = "disable"
+		} else if v, has := (*envs)["sslmode"]; has {
 			dsn.SSL.Mode = v
 			delete(*envs, "sslmode")
 		}
