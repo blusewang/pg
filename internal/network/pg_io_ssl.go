@@ -27,7 +27,7 @@ func (pi *PgIO) ssl() (err error) {
 		if code == 'N' {
 			return nil
 		} else if err = pi.sslCheck(); err != nil {
-			return err
+			return nil
 		}
 		pi.tlsConfig.InsecureSkipVerify = true
 	case "require":
