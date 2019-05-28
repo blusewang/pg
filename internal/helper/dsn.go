@@ -103,12 +103,12 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 	for _, item := range strings.Split(str, " ") {
 		pair := strings.Split(item, "=")
 		if len(pair) == 2 {
-			p[strings.TrimSpace(pair[0])] = strings.TrimSpace(pair[1])
+			p[strings.ToLower(strings.TrimSpace(pair[0]))] = strings.TrimSpace(pair[1])
 		}
 	}
-	if host, has := p["Host"]; has {
+	if host, has := p["host"]; has {
 		dsn.Host = host
-		delete(p, "Host")
+		delete(p, "host")
 	}
 	if port, has := p["Port"]; has {
 		dsn.Port = port
@@ -118,9 +118,9 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 		dsn.Parameter["user"] = u
 		delete(p, "user")
 	}
-	if password, has := p["Password"]; has {
+	if password, has := p["password"]; has {
 		dsn.Password = password
-		delete(p, "Password")
+		delete(p, "password")
 	}
 	if dbName, has := p["dbname"]; has {
 		dsn.Parameter["database"] = dbName
@@ -141,10 +141,6 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 		dsn.ConnectTimeout = time.Duration(to) * time.Second
 		delete(p, "connect_timeout")
 	}
-	if host, has := p["Host"]; has {
-		dsn.Host = host
-		delete(p, "Host")
-	}
 	if strict, has := p["strict"]; has {
 		dsn.IsStrict = strict == "true"
 		delete(p, "strict")
@@ -154,9 +150,6 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 
 	for k, v := range p {
 		dsn.Parameter[k] = v
-	}
-	if dsn.Parameter["host"] != "" {
-		delete(dsn.Parameter, "host")
 	}
 	return
 }
@@ -190,7 +183,7 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 	}
 	var qm = make(map[string]string)
 	for k, v := range u.Query() {
-		qm[k] = v[0]
+		qm[strings.ToLower(k)] = v[0]
 	}
 
 	if tos, has := qm["connect_timeout"]; has {
@@ -210,9 +203,9 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 		delete(qm, "fallback_application_name")
 	}
 
-	if host, has := qm["Host"]; has {
+	if host, has := qm["host"]; has {
 		dsn.Host = host
-		delete(qm, "Host")
+		delete(qm, "host")
 	}
 	if strict, has := qm["strict"]; has {
 		dsn.IsStrict = strict == "true"
@@ -223,9 +216,6 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 
 	for k, v := range qm {
 		dsn.Parameter[k] = v
-	}
-	if dsn.Parameter["host"] != "" {
-		delete(dsn.Parameter, "host")
 	}
 	return
 }

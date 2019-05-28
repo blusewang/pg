@@ -10,11 +10,9 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"io/ioutil"
-	"log"
 	"os"
-	"qiniupkg.com/x/errors.v7"
-	"runtime/debug"
 )
 
 func (pi *PgIO) ssl() (err error) {
@@ -63,8 +61,6 @@ func (pi *PgIO) ssl() (err error) {
 	}
 
 	if err = pi.sslConfig(); err != nil {
-		log.Println(err)
-		debug.PrintStack()
 		return err
 	}
 
@@ -92,19 +88,16 @@ func (pi *PgIO) sslRequest() (code byte, err error) {
 func (pi *PgIO) sslCheck() (err error) {
 	if pi.dsn.SSL.Mode == "verify-ca" || pi.dsn.SSL.Mode == "verify-full" {
 		if _, err = os.Stat(pi.dsn.SSL.RootCert); err != nil {
-			debug.PrintStack()
 			return err
 		}
 	}
 
 	if _, err = os.Stat(pi.dsn.SSL.Cert); err != nil {
-		debug.PrintStack()
 		return err
 	}
 
 	info, err := os.Stat(pi.dsn.SSL.Key)
 	if err != nil {
-		debug.PrintStack()
 		return err
 	}
 	if info.Mode().Perm()&0077 != 0 {
