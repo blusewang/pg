@@ -85,7 +85,7 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 		ss.parse()
 		return ss.rs
 	default:
-		return raw
+		return string(raw)
 	}
 }
 
@@ -187,9 +187,6 @@ func parseBytea(s []byte) (result []byte, err error) {
 	return result, nil
 }
 
-var infinityTsEnabled = false
-var infinityTsNegative time.Time
-var infinityTsPositive time.Time
 var errInvalidTimestamp = errors.New("invalid timestamp")
 
 func mustParse(f string, typ PgType, s []byte) time.Time {
@@ -211,14 +208,10 @@ func mustParse(f string, typ PgType, s []byte) time.Time {
 func parseTs(currentLocation *time.Location, str string) interface{} {
 	switch str {
 	case "-infinity":
-		if infinityTsEnabled {
-			return infinityTsNegative
-		}
+
 		return []byte(str)
 	case "infinity":
-		if infinityTsEnabled {
-			return infinityTsPositive
-		}
+
 		return []byte(str)
 	}
 	t, err := ParseTimestamp(currentLocation, str)

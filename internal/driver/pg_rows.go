@@ -116,7 +116,7 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 		return reflect.TypeOf([]string{})
 
 	default:
-		return reflect.TypeOf([]byte{})
+		return reflect.TypeOf("")
 	}
 }
 
