@@ -7,6 +7,7 @@
 
 #### Go Version Support
 ![Go version](https://img.shields.io/badge/Go-1.11-brightgreen.svg)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fblusewang%2Fpg.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fblusewang%2Fpg?ref=badge_shield)
 
 #### PostgreSQL Version Support
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-10.5-brightgreen.svg)
@@ -62,3 +63,7 @@
 | <ul><li>- [x] </li></ul> | 取消正在处理的请求 | 必备 |
 | <ul><li>- [x] </li></ul> | 终止 | 必备 |
 | <ul><li>- [x] </li></ul> | SSL会话加密 | 远程安全 |
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fblusewang%2Fpg.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fblusewang%2Fpg?ref=badge_large)
