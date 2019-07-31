@@ -103,6 +103,8 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 		return reflect.TypeOf(float64(0))
 	case PgTypeText, PgTypeVarchar, PgTypeChar, PgTypeUuid, PgTypeJson, PgTypeJsonb, PgTypePoint:
 		return reflect.TypeOf("")
+	case PgTypeBytea:
+		return reflect.TypeOf([]byte{})
 
 	case PgTypeArrBool:
 		return reflect.TypeOf([]bool{})
@@ -114,6 +116,8 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 		return reflect.TypeOf([]float64{})
 	case PgTypeArrVarchar, PgTypeArrChar, PgTypeArrText, PgTypeArrUuid, PgTypeArrJson, PgTypeArrJsonb:
 		return reflect.TypeOf([]string{})
+	case PgTypeArrBytea:
+		return reflect.TypeOf([][]byte{})
 
 	default:
 		return reflect.TypeOf("")
