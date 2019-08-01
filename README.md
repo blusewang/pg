@@ -2,7 +2,6 @@
 用于golang database/sql 的PostgreSQL驱动
 
 [![GoDoc](https://godoc.org/github.com/blusewang/pg?status.svg)](https://godoc.org/github.com/blusewang/pg)
-[![Build Status](https://travis-ci.org/blusewang/pg.svg?branch=master)](https://travis-ci.org/blusewang/pg)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/blusewang/pg/blob/master/LICENSE)
 
 #### Go Version Support
@@ -11,7 +10,7 @@
 
 #### PostgreSQL Version Support
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-10.5-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-11.1-brightgreen.svg)
+![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-11.4-brightgreen.svg)
 
 
 ## 安装
