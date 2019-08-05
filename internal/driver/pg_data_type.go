@@ -80,7 +80,7 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 			}
 		}
 		return arr
-	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar:
+	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar, PgTypeArrUuid:
 		var ss = pgStringArr{Raw: bytes.Runes(raw)}
 		ss.parse()
 		return ss.rs
