@@ -193,13 +193,17 @@ func (pi *PgIO) auth(msg PgMessage) (err error) {
 			return err
 		}
 		list, err := pi.receivePgMsg(IdentifiesAuth)
-		if err != nil {
-			return err
-		}
 		for _, v := range list {
 			if v.Identifies == IdentifiesAuth && v.int32() != 0 {
 				return fmt.Errorf("unexpected authentication response: %q", v.Identifies)
+			} else if v.Identifies == IdentifiesErrorResponse {
+				pi.IOError = v.ParseError()
+				return pi.IOError
 			}
+		}
+		if err != nil {
+			pi.IOError = err
+			return err
 		}
 
 	case 5:
@@ -212,13 +216,17 @@ func (pi *PgIO) auth(msg PgMessage) (err error) {
 			return err
 		}
 		list, err := pi.receivePgMsg(IdentifiesAuth)
-		if err != nil {
-			return err
-		}
 		for _, v := range list {
 			if v.Identifies == IdentifiesAuth && v.int32() != 0 {
 				return fmt.Errorf("unexpected authentication response: %q", v.Identifies)
+			} else if v.Identifies == IdentifiesErrorResponse {
+				pi.IOError = v.ParseError()
+				return pi.IOError
 			}
+		}
+		if err != nil {
+			pi.IOError = err
+			return pi.IOError
 		}
 	}
 	return
