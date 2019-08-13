@@ -113,6 +113,12 @@ func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err er
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err != nil {
+			delete(c.stmts, stmt.Identifies)
+			_ = c.io.CloseParse(stmt.Identifies)
+		}
+	}()
 	return stmt.Query(args)
 }
 
