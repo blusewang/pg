@@ -3,6 +3,7 @@
 
 [![GoDoc](https://godoc.org/github.com/blusewang/pg?status.svg)](https://godoc.org/github.com/blusewang/pg)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/blusewang/pg/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/blusewang/pg)](https://goreportcard.com/report/github.com/blusewang/pg)
 
 #### Go Version Support
 ![Go version](https://img.shields.io/badge/Go-1.11-brightgreen.svg)
