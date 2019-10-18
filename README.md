@@ -41,7 +41,6 @@
 
 ## 特性
 
-* 送入`Scan()`处理`null`值时支持传指针类型的指针！！
 * 常见`Array`类型直接兼容golang的数组类型。如PG的：`integer[]`，对应golang的：`[]int64`
 * 数据源格式，既支持键值对，又支持URI。书写格式遵守：[PG官方规范](https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-CONNSTRING)。
    * URI格式，支持`pg://`前缀。
