@@ -113,8 +113,10 @@ func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err er
 	// 在判断 err 是否为 null前定义defer方法。
 	defer func() {
 		if err != nil {
-			delete(c.stmts, stmt.Identifies)
-			_ = c.io.CloseParse(stmt.Identifies)
+			if stmt != nil {
+				delete(c.stmts, stmt.Identifies)
+				_ = c.io.CloseParse(stmt.Identifies)
+			}
 		}
 	}()
 	if err != nil {
