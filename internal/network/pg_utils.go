@@ -34,6 +34,8 @@ func value2bytes(value interface{}) []byte {
 		return []byte(value.(string))
 	case time.Time:
 		return formatTimestamp(value.(time.Time))
+	case *time.Time:
+		return formatTimestamp(*value.(*time.Time))
 	default:
 		return []byte{}
 	}
