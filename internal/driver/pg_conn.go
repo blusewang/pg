@@ -9,6 +9,7 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/helper"
@@ -223,15 +224,18 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	case *float32, *float64:
 		nv.Value, _ = strconv.ParseFloat(fmt.Sprintf("%v", reflect.ValueOf(nv.Value).Elem().Float()), 64)
 	case []float32, []float64:
-		var as = fmt.Sprintf("%v", nv.Value)
+		raw, _ := json.Marshal(nv.Value)
+		var as = string(raw)
 		as = strings.ReplaceAll(as, "[", "{")
 		nv.Value = strings.ReplaceAll(as, "]", "}")
 	case *[]float32, *[]float64:
-		var as = fmt.Sprintf("%v", nv.Value)
+		raw, _ := json.Marshal(nv.Value)
+		var as = string(raw)
 		as = strings.ReplaceAll(as, "[", "{")
 		nv.Value = strings.ReplaceAll(as, "]", "}")
 	case [][]float32, [][]float64:
-		var as = fmt.Sprintf("%v", nv.Value)
+		raw, _ := json.Marshal(nv.Value)
+		var as = string(raw)
 		as = strings.ReplaceAll(as, "[", "{")
 		nv.Value = strings.ReplaceAll(as, "]", "}")
 
