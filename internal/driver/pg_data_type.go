@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
@@ -68,18 +69,22 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 		}
 		return arr
 	case PgTypeArrFloat4, PgTypeArrFloat8:
-		var str = string(raw)
-		var arr []float64
-		if strings.HasPrefix(str, "{") && len(str) > 2 {
-			str = str[1 : len(str)-1]
-			for _, v := range strings.Split(str, ",") {
-				if v != "" {
-					n, _ := strconv.ParseFloat(v, 64)
-					arr = append(arr, n)
-				}
-			}
+		raw = bytes.ReplaceAll(raw, []byte("{"), []byte("["))
+		raw = bytes.ReplaceAll(raw, []byte("}"), []byte("]"))
+		if bytes.HasPrefix(raw, []byte("[[[")) {
+			var arr [][][]float64
+			_ = json.Unmarshal(raw, &arr)
+			return arr
+		} else if bytes.HasPrefix(raw, []byte("[[")) {
+			var arr [][]float64
+			_ = json.Unmarshal(raw, &arr)
+			return arr
+		} else if bytes.HasPrefix(raw, []byte("[")) {
+			var arr []float64
+			_ = json.Unmarshal(raw, &arr)
+			return arr
 		}
-		return arr
+		return []float64{}
 	case PgTypeArrText, PgTypeArrChar, PgTypeArrVarchar, PgTypeArrUuid:
 		var ss = pgStringArr{Raw: bytes.Runes(raw)}
 		ss.parse()

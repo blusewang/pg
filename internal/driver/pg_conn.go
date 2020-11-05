@@ -224,10 +224,16 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		nv.Value, _ = strconv.ParseFloat(fmt.Sprintf("%v", reflect.ValueOf(nv.Value).Elem().Float()), 64)
 	case []float32, []float64:
 		var as = fmt.Sprintf("%v", nv.Value)
-		nv.Value = "{" + strings.Replace(as[1:len(as)-1], " ", ",", -1) + "}"
+		as = strings.ReplaceAll(as, "[", "{")
+		nv.Value = strings.ReplaceAll(as, "]", "}")
 	case *[]float32, *[]float64:
 		var as = fmt.Sprintf("%v", nv.Value)
-		nv.Value = "{" + strings.Replace(as[2:len(as)-1], " ", ",", -1) + "}"
+		as = strings.ReplaceAll(as, "[", "{")
+		nv.Value = strings.ReplaceAll(as, "]", "}")
+	case [][]float32, [][]float64:
+		var as = fmt.Sprintf("%v", nv.Value)
+		as = strings.ReplaceAll(as, "[", "{")
+		nv.Value = strings.ReplaceAll(as, "]", "}")
 
 	//	byte
 	case []byte:
