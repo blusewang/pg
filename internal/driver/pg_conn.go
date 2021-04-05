@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"github.com/blusewang/pg/internal/helper"
 	"github.com/blusewang/pg/internal/network"
+	"github.com/blusewang/pg/pg_type"
 	"reflect"
 	"strconv"
 	"strings"
@@ -239,6 +240,17 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		as = strings.ReplaceAll(as, "[", "{")
 		nv.Value = strings.ReplaceAll(as, "]", "}")
 
+	case pg_type.Point:
+		p := nv.Value.(pg_type.Point)
+		nv.Value = p.String()
+
+	case *pg_type.Point:
+		p := nv.Value.(*pg_type.Point)
+		if p == nil {
+			nv.Value = new(pg_type.Point).String()
+		} else {
+			nv.Value = p.String()
+		}
 	//	byte
 	case []byte:
 		nv.Value = fmt.Sprintf("\\x%x", nv.Value)

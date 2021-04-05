@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blusewang/pg/internal/network"
+	"github.com/blusewang/pg/pg_type"
 	"math"
 	"strconv"
 	"strings"
@@ -53,7 +54,7 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case PgTypeJson, PgTypeJsonb, PgTypeUuid, PgTypePoint:
+	case PgTypeJson, PgTypeJsonb, PgTypeUuid:
 		return string(raw)
 	case PgTypeArrInt4:
 		var str = string(raw)
@@ -89,6 +90,12 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 		var ss = pgStringArr{Raw: bytes.Runes(raw)}
 		ss.parse()
 		return ss.rs
+	case PgTypePoint:
+		raw = bytes.ReplaceAll(raw, []byte("("), []byte("["))
+		raw = bytes.ReplaceAll(raw, []byte(")"), []byte("]"))
+		var arr []float64
+		_ = json.Unmarshal(raw, &arr)
+		return pg_type.Point{X: arr[0], Y: arr[1]}
 	default:
 		return string(raw)
 	}
