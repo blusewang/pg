@@ -13,8 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/blusewang/pg/internal/network"
-	"github.com/blusewang/pg/pg_type"
+	"github.com/blusewang/pg/internal/frame"
 	"math"
 	"strconv"
 	"strings"
@@ -23,8 +22,8 @@ import (
 )
 
 // 针对需改造的数据做转换
-func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.Location, isStrict bool) driver.Value {
-	if fieldLen == 4294967295 && isStrict {
+func convert(raw []byte, col frame.Column, location *time.Location, isStrict bool) driver.Value {
+	if raw == nil && isStrict {
 		// is nil
 		return nil
 	}
@@ -54,7 +53,7 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case PgTypeJson, PgTypeJsonb, PgTypeUuid:
+	case PgTypeJson, PgTypeJsonb, PgTypeUuid, PgTypePoint:
 		return string(raw)
 	case PgTypeArrInt4:
 		var str = string(raw)
@@ -90,12 +89,12 @@ func convert(raw []byte, col network.PgColumn, fieldLen uint32, location *time.L
 		var ss = pgStringArr{Raw: bytes.Runes(raw)}
 		ss.parse()
 		return ss.rs
-	case PgTypePoint:
-		raw = bytes.ReplaceAll(raw, []byte("("), []byte("["))
-		raw = bytes.ReplaceAll(raw, []byte(")"), []byte("]"))
-		var arr []float64
-		_ = json.Unmarshal(raw, &arr)
-		return pg_type.Point{X: arr[0], Y: arr[1]}
+	//case PgTypePoint:
+	//	raw = bytes.ReplaceAll(raw, []byte("("), []byte("["))
+	//	raw = bytes.ReplaceAll(raw, []byte(")"), []byte("]"))
+	//	var arr []float64
+	//	_ = json.Unmarshal(raw, &arr)
+	//	return pg_type.Point{X: arr[0], Y: arr[1]}
 	default:
 		return string(raw)
 	}

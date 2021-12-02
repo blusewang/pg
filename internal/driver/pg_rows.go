@@ -10,7 +10,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/blusewang/pg/internal/network"
+	"github.com/blusewang/pg/internal/frame"
 	"io"
 	"math"
 	"reflect"
@@ -20,17 +20,15 @@ import (
 const headerSize = 4
 
 type PgRows struct {
-	isStrict       bool
-	location       *time.Location
-	columns        []network.PgColumn
-	parameterTypes []uint32
-	fieldLen       *[][]uint32
-	rows           *[][][]byte
-	position       int
+	isStrict bool
+	location *time.Location
+	columns  *frame.RowDescription
+	rows     []*frame.DataRow
+	position int
 }
 
 func (pr *PgRows) Columns() (cols []string) {
-	for _, v := range pr.columns {
+	for _, v := range pr.columns.Columns {
 		cols = append(cols, v.Name)
 	}
 	return
@@ -39,14 +37,12 @@ func (pr *PgRows) Columns() (cols []string) {
 func (pr *PgRows) Close() error {
 	pr.position = 0
 	pr.rows = nil
-	pr.fieldLen = nil
 	pr.columns = nil
-	pr.parameterTypes = nil
 	return nil
 }
 
 func (pr *PgRows) Next(dest []driver.Value) error {
-	var rowsLen = len(*pr.rows)
+	var rowsLen = len(pr.rows)
 	if rowsLen == 0 {
 		return sql.ErrNoRows
 	} else if pr.position < 0 || pr.position >= rowsLen {
@@ -54,17 +50,17 @@ func (pr *PgRows) Next(dest []driver.Value) error {
 	} else if pr.position == rowsLen {
 		return io.EOF
 	}
-	for k, v := range (*pr.rows)[pr.position] {
-		dest[k] = convert(v, pr.columns[k], (*pr.fieldLen)[pr.position][k], pr.location, pr.isStrict)
+	for k, v := range (pr.rows)[pr.position].DataArr {
+		dest[k] = convert(v, pr.columns.Columns[k], pr.location, pr.isStrict)
 	}
 	pr.position += 1
 	return nil
 }
 
-// may be implemented by Rows. It should return the precision and scale for decimal types.
+// ColumnTypePrecisionScale may be implemented by Rows. It should return the precision and scale for decimal types.
 // If not applicable, ok should be false.
 func (pr *PgRows) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
-	var fd = pr.columns[index]
+	var fd = pr.columns.Columns[index]
 	switch fd.TypeOid {
 	case PgTypeNumeric, PgTypeArrNumeric:
 		mod := fd.TypeModifier - headerSize
@@ -77,22 +73,22 @@ func (pr *PgRows) ColumnTypePrecisionScale(index int) (precision, scale int64, o
 }
 
 func (pr *PgRows) ColumnTypeLength(index int) (length int64, ok bool) {
-	switch pr.columns[index].TypeOid {
+	switch pr.columns.Columns[index].TypeOid {
 	case PgTypeText, PgTypeBytea:
 		return math.MaxInt64, true
 	case PgTypeVarchar, PgTypeBpchar:
-		return int64(pr.columns[index].TypeModifier - headerSize), true
+		return int64(pr.columns.Columns[index].TypeModifier - headerSize), true
 	default:
 		return 0, false
 	}
 }
 
 func (pr *PgRows) ColumnTypeDatabaseTypeName(index int) string {
-	return PgTypeMap[PgType(pr.columns[index].TypeOid)]
+	return PgTypeMap[PgType(pr.columns.Columns[index].TypeOid)]
 }
 
 func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
-	switch PgType(pr.columns[index].TypeOid) {
+	switch PgType(pr.columns.Columns[index].TypeOid) {
 	case PgTypeBool:
 		return reflect.TypeOf(false)
 	case PgTypeDate, PgTypeTime, PgTypeTimestamp, PgTypeTimestamptz, PgTypeTimetz:
@@ -124,7 +120,6 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 	}
 }
 
-// RowsNextResultSet
 // HasNextResultSet is called at the end of the current result set and
 // reports whether there is another result set after the current one.
 func (pr *PgRows) HasNextResultSet() bool {

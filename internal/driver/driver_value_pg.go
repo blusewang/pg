@@ -1,24 +1,19 @@
-// Copyright 2019 MQ, Inc. All rights reserved.
+// Copyright 2021 YBCZ, Inc. All rights reserved.
 //
 // Use of this source code is governed by a MIT license
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package network
+package driver
 
 import (
+	"database/sql/driver"
 	"go/types"
 	"strconv"
 	"time"
 )
 
-//   int64
-//   float64
-//   bool
-//   []byte
-//   string
-//   time.Time
-func value2bytes(value interface{}) []byte {
+func driverValue2Pg(value driver.Value) []byte {
 	switch value.(type) {
 	case types.Nil:
 		return nil

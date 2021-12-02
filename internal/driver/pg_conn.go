@@ -12,9 +12,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/blusewang/pg/internal/client"
 	"github.com/blusewang/pg/internal/helper"
-	"github.com/blusewang/pg/internal/network"
-	"github.com/blusewang/pg/pg_type"
 	"reflect"
 	"strconv"
 	"strings"
@@ -28,12 +27,7 @@ func NewPgConn(name string) (c *PgConn, err error) {
 		return
 	}
 
-	c.io = network.NewPgIO(c.dsn)
-	err = c.io.Dial(c.dsn.Address())
-	if err != nil {
-		return
-	}
-	err = c.io.StartUp()
+	c.io, err = client.NewClient(context.Background(), *c.dsn)
 	if err != nil {
 		return
 	}
@@ -48,13 +42,7 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 		return
 	}
 
-	c.io = network.NewPgIO(c.dsn)
-	var net, addr, timeout = c.dsn.Address()
-	err = c.io.DialContext(ctx, net, addr, timeout)
-	if err != nil {
-		return
-	}
-	err = c.io.StartUp()
+	c.io, err = client.NewClient(ctx, *c.dsn)
 	if err != nil {
 		return
 	}
@@ -64,14 +52,14 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 
 type PgConn struct {
 	dsn   *helper.DataSourceName
-	io    *network.PgIO
+	io    *client.Client
 	stmts map[string]*PgStmt
 }
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *PgConn) Prepare(query string) (driver.Stmt, error) {
 	if c.io.IOError != nil {
-		return nil, driver.ErrBadConn
+		return nil, c.io.Err.Error
 	}
 	return NewPgStmt(c, query)
 }
@@ -94,12 +82,12 @@ func (c *PgConn) Close() (err error) {
 // Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
 func (c *PgConn) Begin() (_ driver.Tx, err error) {
 	if c.io.IOError != nil {
-		return nil, driver.ErrBadConn
+		return nil, c.io.Err.Error
 	}
 	if c.io.IsInTransaction() {
 		err = errors.New("this connection is in transaction")
 	}
-	_, _, _, err = c.io.QueryNoArgs("begin")
+	_, err = c.io.QueryNoArgs("begin")
 	if err != nil {
 		return
 	}
@@ -127,7 +115,7 @@ func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err er
 	return stmt.Query(args)
 }
 
-// NamedValueChecker可以可选地由Conn或Stmt实现。 它为驱动程序提供了更多控制来处理Go和数据库类型，超出了允许的默认值类型。
+// CheckNamedValue NamedValueChecker可以可选地由Conn或Stmt实现。 它为驱动程序提供了更多控制来处理Go和数据库类型，超出了允许的默认值类型。
 //
 //sql包按以下顺序检查值检查器，在第一个找到的匹配项处停止：
 // Stmt.NamedValueChecker，Conn.NamedValueChecker，Stmt.ColumnConverter，DefaultParameterConverter。
@@ -240,17 +228,6 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 		as = strings.ReplaceAll(as, "[", "{")
 		nv.Value = strings.ReplaceAll(as, "]", "}")
 
-	case pg_type.Point:
-		p := nv.Value.(pg_type.Point)
-		nv.Value = p.String()
-
-	case *pg_type.Point:
-		p := nv.Value.(*pg_type.Point)
-		if p == nil {
-			nv.Value = new(pg_type.Point).String()
-		} else {
-			nv.Value = p.String()
-		}
 	//	byte
 	case []byte:
 		nv.Value = fmt.Sprintf("\\x%x", nv.Value)

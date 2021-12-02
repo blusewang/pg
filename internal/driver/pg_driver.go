@@ -9,11 +9,13 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+	"log"
 )
 
 type PgDriver struct{}
 
 func (d *PgDriver) Open(name string) (driver.Conn, error) {
+	log.Println(name)
 	return NewPgConn(name)
 }
 

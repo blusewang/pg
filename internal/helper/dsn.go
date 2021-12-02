@@ -7,6 +7,7 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -262,5 +263,26 @@ func (dsn *DataSourceName) Address() (network, address string, timeout time.Dura
 		address = dsn.Host + ":" + dsn.Port
 	}
 	timeout = dsn.ConnectTimeout
+	return
+}
+
+func (dsn *DataSourceName) SSLCheck() (err error) {
+	if dsn.SSL.Mode == "verify-ca" || dsn.SSL.Mode == "verify-full" {
+		if _, err = os.Stat(dsn.SSL.RootCert); err != nil {
+			return err
+		}
+	}
+
+	if _, err = os.Stat(dsn.SSL.Cert); err != nil {
+		return err
+	}
+
+	info, err := os.Stat(dsn.SSL.Key)
+	if err != nil {
+		return err
+	}
+	if info.Mode().Perm()&0077 != 0 {
+		return errors.New("pq: Private key file has group or world access. Permissions should be u=rw (0600) or less")
+	}
 	return
 }
