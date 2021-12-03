@@ -4,19 +4,20 @@
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package driver
+package pg
 
 import (
 	"context"
 	"database/sql/driver"
-	"log"
+	driver2 "github.com/blusewang/pg/internal/driver"
 )
 
-type PgDriver struct{}
+type Driver struct {
+}
 
-func (d *PgDriver) Open(name string) (driver.Conn, error) {
-	log.Println(name)
-	return NewPgConn(name)
+func (d *Driver) Open(name string) (driver.Conn, error) {
+	// 此接口似乎已废弃
+	return driver2.NewPgConn(name)
 }
 
 // BeginTx starts and returns a new transaction.
@@ -31,10 +32,11 @@ func (d *PgDriver) Open(name string) (driver.Conn, error) {
 // This must also check opts.ReadOnly to determine if the read-only
 // value is true to either set the read-only transaction property if supported
 // or return an error if it is not supported.
-func (d *PgDriver) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+func (d *Driver) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	// TODO 没精力了解用处
 	return nil, nil
 }
 
-func (d *PgDriver) OpenConnector(name string) (driver.Connector, error) {
-	return &PgConnector{Name: name}, nil
+func (d *Driver) OpenConnector(name string) (driver.Connector, error) {
+	return &Connector{Name: name}, nil
 }

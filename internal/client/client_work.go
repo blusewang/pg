@@ -19,10 +19,6 @@ func (c *Client) getFrames() (list []interface{}, err error) {
 			err = io.EOF
 			return
 		}
-		switch x := out.(type) {
-		default:
-			log.Println(x)
-		}
 		list = append(list, out)
 		if e, has := out.(*frame.Error); has {
 			err = e.Error

@@ -10,17 +10,20 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"github.com/blusewang/pg/internal/client"
-	dr "github.com/blusewang/pg/internal/driver"
 )
 
 func init() {
-	sql.Register("pg", &dr.PgDriver{})
+	sql.Register("pg", &Driver{})
 }
 
 func NewConnector(dataSourceName string) driver.Connector {
-	return &dr.PgConnector{Name: dataSourceName}
+	return &Connector{Name: dataSourceName}
 }
 
 func Listen(channel string, handler func(string)) {
 	client.ListenMap[channel] = handler
+}
+
+func UnListen(channel string) {
+	delete(client.ListenMap, channel)
 }

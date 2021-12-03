@@ -11,10 +11,10 @@ import (
 )
 
 type PgTx struct {
-	pgConn *PgConn
+	pgConn PgConn
 }
 
-func (t *PgTx) Commit() (err error) {
+func (t PgTx) Commit() (err error) {
 	if t.pgConn.io.IOError != nil {
 		return t.pgConn.io.Err.Error
 	}
@@ -31,7 +31,7 @@ func (t *PgTx) Commit() (err error) {
 	return
 }
 
-func (t *PgTx) Rollback() (err error) {
+func (t PgTx) Rollback() (err error) {
 	if t.pgConn.io.IOError != nil {
 		return t.pgConn.io.Err.Error
 	}

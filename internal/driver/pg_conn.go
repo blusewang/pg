@@ -20,8 +20,13 @@ import (
 	"time"
 )
 
-func NewPgConn(name string) (c *PgConn, err error) {
-	c = new(PgConn)
+type PgConn struct {
+	dsn   *helper.DataSourceName
+	io    *client.Client
+	stmts map[string]PgStmt
+}
+
+func NewPgConn(name string) (c PgConn, err error) {
 	c.dsn, err = helper.ParseDSN(name)
 	if err != nil {
 		return
@@ -31,7 +36,7 @@ func NewPgConn(name string) (c *PgConn, err error) {
 	if err != nil {
 		return
 	}
-	c.stmts = make(map[string]*PgStmt)
+	c.stmts = make(map[string]PgStmt)
 	return
 }
 
@@ -46,18 +51,12 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 	if err != nil {
 		return
 	}
-	c.stmts = make(map[string]*PgStmt)
+	c.stmts = make(map[string]PgStmt)
 	return
 }
 
-type PgConn struct {
-	dsn   *helper.DataSourceName
-	io    *client.Client
-	stmts map[string]*PgStmt
-}
-
 // Prepare returns a prepared statement, bound to this connection.
-func (c *PgConn) Prepare(query string) (driver.Stmt, error) {
+func (c PgConn) Prepare(query string) (driver.Stmt, error) {
 	if c.io.IOError != nil {
 		return nil, c.io.Err.Error
 	}
@@ -72,7 +71,7 @@ func (c *PgConn) Prepare(query string) (driver.Stmt, error) {
 // connections and only calls Close when there's a surplus of
 // idle connections, it shouldn't be necessary for drivers to
 // do their own connection caching.
-func (c *PgConn) Close() (err error) {
+func (c PgConn) Close() (err error) {
 	err = c.io.Terminate()
 	return
 }
@@ -80,7 +79,7 @@ func (c *PgConn) Close() (err error) {
 // Begin starts and returns a new transaction.
 //
 // Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
-func (c *PgConn) Begin() (_ driver.Tx, err error) {
+func (c PgConn) Begin() (_ driver.Tx, err error) {
 	if c.io.IOError != nil {
 		return nil, c.io.Err.Error
 	}
@@ -98,12 +97,12 @@ func (c *PgConn) Begin() (_ driver.Tx, err error) {
 	return &PgTx{pgConn: c}, nil
 }
 
-func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err error) {
+func (c PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err error) {
 	stmt, err := NewPgStmt(c, query)
 	// 在判断 err 是否为 null前定义defer方法。
 	defer func() {
 		if err != nil {
-			if stmt != nil {
+			if stmt.Identifies != "" {
 				delete(c.stmts, stmt.Identifies)
 				_ = c.io.CloseParse(stmt.Identifies)
 			}
@@ -123,7 +122,7 @@ func (c *PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err er
 //如果CheckNamedValue返回ErrRemoveArgument，则NamedValue将不包含在最终查询参数中。 这可用于将特殊选项传递给查询本身。
 //
 //如果返回ErrSkip，则会将列转换器错误检查路径用于参数。 司机可能希望在他们用完特殊情况后退回ErrSkip。
-func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
+func (c PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	if nv.Value == nil {
 		return nil
 	} else {
@@ -245,6 +244,6 @@ func (c *PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 	return nil
 }
 
-func (c *PgConn) cancel() {
+func (c PgConn) cancel() {
 	_ = c.io.CancelRequest()
 }

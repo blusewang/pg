@@ -14,14 +14,15 @@ import (
 	"github.com/blusewang/pg/internal/client"
 )
 
-func NewPgStmt(conn *PgConn, query string) (st *PgStmt, err error) {
+func NewPgStmt(conn PgConn, query string) (st PgStmt, err error) {
 	if conn.io.IOError != nil {
-		return nil, conn.io.Err.Error
+		err = conn.io.Err.Error
+		return
 	}
 	var id = fmt.Sprintf("%x", md5.Sum([]byte(query)))
 	st = conn.stmts[id]
-	if st == nil {
-		st = new(PgStmt)
+	if st.Identifies == "" {
+		st = *new(PgStmt)
 		st.pgConn = conn
 		st.Identifies = id
 		st.Sql = query
@@ -33,14 +34,14 @@ func NewPgStmt(conn *PgConn, query string) (st *PgStmt, err error) {
 }
 
 type PgStmt struct {
-	pgConn     *PgConn
+	pgConn     PgConn
 	Identifies string
 	Sql        string
 	Response   client.Response
 	resultSig  chan int
 }
 
-func (s *PgStmt) Close() (err error) {
+func (s PgStmt) Close() (err error) {
 	if s.pgConn.io.IOError != nil {
 		return s.pgConn.io.Err.Error
 	}
@@ -49,20 +50,20 @@ func (s *PgStmt) Close() (err error) {
 		return
 	}
 	close(s.resultSig)
-	if s.pgConn.stmts[s.Identifies] != nil {
+	if s.pgConn.stmts[s.Identifies].Identifies != "" {
 		delete(s.pgConn.stmts, s.Identifies)
 	}
 	return nil
 }
 
-func (s *PgStmt) NumInput() int {
+func (s PgStmt) NumInput() int {
 	if s.Response.Description == nil {
 		return 0
 	}
 	return len(s.Response.Description.Columns)
 }
 
-func (s *PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
+func (s PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
 	if s.pgConn.io.IOError != nil {
 		return nil, s.pgConn.io.Err.Error
 	}
@@ -74,7 +75,7 @@ func (s *PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
 	return driver.RowsAffected(response.Completion.Affected()), err
 }
 
-func (s *PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
+func (s PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
 	var as [][]byte
 	for _, v := range args {
 		as = append(as, driverValue2Pg(v))
@@ -93,7 +94,7 @@ func (s *PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
 // as an INSERT or UPDATE.
 //
 // ExecContext must honor the context timeout and return when it is canceled.
-func (s *PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+func (s PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	go s.watchCancel(ctx)
 	defer s.complete()
 	if s.pgConn.io.IOError != nil {
@@ -111,7 +112,7 @@ func (s *PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (dri
 // SELECT.
 //
 // QueryContext must honor the context timeout and return when it is canceled.
-func (s *PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ driver.Rows, err error) {
+func (s PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ driver.Rows, err error) {
 	go s.watchCancel(ctx)
 	defer s.complete()
 	if s.pgConn.io.IOError != nil {
@@ -132,7 +133,7 @@ func (s *PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ 
 	return pr, err
 }
 
-func (s *PgStmt) watchCancel(ctx context.Context) {
+func (s PgStmt) watchCancel(ctx context.Context) {
 	select {
 	case <-ctx.Done():
 		s.cancel()
@@ -140,10 +141,10 @@ func (s *PgStmt) watchCancel(ctx context.Context) {
 	}
 }
 
-func (s *PgStmt) cancel() {
+func (s PgStmt) cancel() {
 	_ = s.pgConn.io.CancelRequest()
 }
 
-func (s *PgStmt) complete() {
+func (s PgStmt) complete() {
 	s.resultSig <- 1
 }
