@@ -199,5 +199,5 @@ func (c *Client) Terminate() (err error) {
 }
 
 func (c *Client) IsInTransaction() bool {
-	return c.status == frame.TransactionStatusIdle || c.status == frame.TransactionStatusInFailedTransaction
+	return c.status == frame.TransactionStatusIdleInTransaction || c.status == frame.TransactionStatusInFailedTransaction
 }
