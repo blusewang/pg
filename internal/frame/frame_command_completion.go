@@ -16,6 +16,9 @@ type CommandCompletion struct {
 }
 
 func (cc *CommandCompletion) Affected() (n int) {
+	if cc == nil {
+		return
+	}
 	arr := strings.Split(string(cc.Payload), " ")
 	if len(arr) == 2 {
 		n, _ = strconv.Atoi(arr[1])

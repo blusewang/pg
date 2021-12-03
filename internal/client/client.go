@@ -35,9 +35,10 @@ type Client struct {
 }
 
 type Response struct {
-	Description *frame.RowDescription
-	DataRows    []*frame.DataRow
-	Completion  *frame.CommandCompletion
+	ParameterDescription *frame.ParameterDescription
+	Description          *frame.RowDescription
+	DataRows             []*frame.DataRow
+	Completion           *frame.CommandCompletion
 }
 
 func NewClient(ctx context.Context, dsn helper.DataSourceName) (c *Client, err error) {

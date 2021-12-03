@@ -57,10 +57,10 @@ func (s PgStmt) Close() (err error) {
 }
 
 func (s PgStmt) NumInput() int {
-	if s.Response.Description == nil {
+	if s.Response.ParameterDescription == nil {
 		return 0
 	}
-	return len(s.Response.Description.Columns)
+	return len(s.Response.ParameterDescription.TypeOIDs)
 }
 
 func (s PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {

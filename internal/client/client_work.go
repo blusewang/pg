@@ -9,7 +9,6 @@ package client
 import (
 	"github.com/blusewang/pg/internal/frame"
 	"io"
-	"log"
 )
 
 func (c *Client) getFrames() (list []interface{}, err error) {
@@ -31,7 +30,7 @@ func (c *Client) getFrames() (list []interface{}, err error) {
 }
 
 func (c *Client) QueryNoArgs(query string) (res Response, err error) {
-	if err = c.writer.Encode(frame.NewSimpleQuery(query)); err != nil {
+	if err = c.writer.Fire(frame.NewSimpleQuery(query)); err != nil {
 		return
 	}
 	fs, err := c.getFrames()
@@ -73,6 +72,9 @@ func (c *Client) Parse(name, query string) (res Response, err error) {
 	}
 	for i := range fs {
 		switch f := fs[i].(type) {
+		case *frame.ParameterDescription:
+			f.Decode()
+			res.ParameterDescription = f
 		case *frame.RowDescription:
 			f.Decode()
 			res.Description = f
@@ -169,7 +171,6 @@ func (c *Client) CloseParse(name string) (err error) {
 		return
 	}
 	_, err = c.getFrames()
-	log.Println(err)
 	return
 }
 
