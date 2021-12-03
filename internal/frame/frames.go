@@ -120,7 +120,7 @@ func NewCloseStat(stat string) *Frame {
 		Name:    'C',
 		Payload: []byte{},
 	}
-	c.WriteUint8('s')
+	c.WriteUint8('S')
 	c.writeString(stat)
 	return c
 }

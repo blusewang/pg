@@ -43,7 +43,7 @@ func (c *Client) connect(ctx context.Context, dsn helper.DataSourceName) (err er
 
 func (c *Client) ssl(dsn helper.DataSourceName) (err error) {
 	var tlsConfig tls.Config
-	if err = frame.NewEncoder(c.conn).Encode(frame.NewSSLRequest()); err != nil {
+	if err = frame.NewEncoder(c.conn).Fire(frame.NewSSLRequest()); err != nil {
 		return
 	}
 	var code byte
@@ -120,7 +120,7 @@ func (c *Client) startup(dsn helper.DataSourceName) (err error) {
 		su.AddParam(k, v)
 	}
 	su.WriteUint8(0)
-	if err = c.writer.Encode(su.Frame); err != nil {
+	if err = c.writer.Fire(su.Frame); err != nil {
 		return
 	}
 	var out interface{}
@@ -135,13 +135,13 @@ func (c *Client) startup(dsn helper.DataSourceName) (err error) {
 			case frame.AuthTypePwd:
 				ar := frame.NewAuthResponse()
 				ar.Password(dsn.Password)
-				if err = c.writer.Encode(ar.Frame); err != nil {
+				if err = c.writer.Fire(ar.Frame); err != nil {
 					return
 				}
 			case frame.AuthTypeMd5:
 				ar := frame.NewAuthResponse()
 				ar.Md5Pwd(dsn.Parameter["user"], dsn.Password, string(f.GetMd5Salt()))
-				if err = c.writer.Encode(ar.Frame); err != nil {
+				if err = c.writer.Fire(ar.Frame); err != nil {
 					return
 				}
 			case frame.AuthTypeOk:
@@ -179,7 +179,6 @@ func (c *Client) readerLoop() {
 		switch f := out.(type) {
 		case *frame.Notification:
 			f.Decode()
-			// TODO 分发至订阅的函数中
 			if ListenMap[f.Condition] != nil {
 				ListenMap[f.Condition](f.Text)
 			}

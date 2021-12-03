@@ -9,6 +9,7 @@ package client
 import (
 	"github.com/blusewang/pg/internal/frame"
 	"io"
+	"log"
 )
 
 func (c *Client) getFrames() (list []interface{}, err error) {
@@ -18,8 +19,15 @@ func (c *Client) getFrames() (list []interface{}, err error) {
 			err = io.EOF
 			return
 		}
+		switch x := out.(type) {
+		default:
+			log.Println(x)
+		}
 		list = append(list, out)
-
+		if e, has := out.(*frame.Error); has {
+			err = e.Error
+			return
+		}
 		if _, has := out.(*frame.ReadyForQuery); has {
 			return
 		}
@@ -60,6 +68,9 @@ func (c *Client) Parse(name, query string) (res Response, err error) {
 	if err = c.writer.Encode(frame.NewSync()); err != nil {
 		return
 	}
+	if err = c.writer.Flush(); err != nil {
+		return
+	}
 	fs, err := c.getFrames()
 	if err != nil {
 		return
@@ -87,6 +98,9 @@ func (c *Client) ParseExec(name string, args [][]byte) (res Response, err error)
 		return
 	}
 	if err = c.writer.Encode(frame.NewSync()); err != nil {
+		return
+	}
+	if err = c.writer.Flush(); err != nil {
 		return
 	}
 	fs, err := c.getFrames()
@@ -123,6 +137,9 @@ func (c *Client) ParseQuery(name string, args [][]byte) (res Response, err error
 	if err = c.writer.Encode(frame.NewSync()); err != nil {
 		return
 	}
+	if err = c.writer.Flush(); err != nil {
+		return
+	}
 	fs, err := c.getFrames()
 	if err != nil {
 		return
@@ -152,7 +169,11 @@ func (c *Client) CloseParse(name string) (err error) {
 	if err = c.writer.Encode(frame.NewSync()); err != nil {
 		return
 	}
+	if err = c.writer.Flush(); err != nil {
+		return
+	}
 	_, err = c.getFrames()
+	log.Println(err)
 	return
 }
 
@@ -163,12 +184,15 @@ func (c *Client) CancelRequest() (err error) {
 	if err = c.writer.Encode(frame.NewSync()); err != nil {
 		return
 	}
+	if err = c.writer.Flush(); err != nil {
+		return
+	}
 	_, err = c.getFrames()
 	return
 }
 
 func (c *Client) Terminate() (err error) {
-	_ = c.writer.Encode(frame.NewTermination())
+	_ = c.writer.Fire(frame.NewTermination())
 	close(c.responseChan)
 	close(c.frameChan)
 	c.parameterStatus = nil
