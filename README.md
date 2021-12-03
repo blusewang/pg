@@ -8,12 +8,15 @@
 #### Go Version Support
 ![Go version](https://img.shields.io/badge/Go-1.11x-brightgreen.svg)
 ![Go version](https://img.shields.io/badge/Go-1.13x-brightgreen.svg)
+![Go version](https://img.shields.io/badge/Go-1.17x-brightgreen.svg)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fblusewang%2Fpg.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fblusewang%2Fpg?ref=badge_shield)
 
 #### PostgreSQL Version Support
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-10.5-brightgreen.svg)
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-11.4-brightgreen.svg)
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-12.0-brightgreen.svg)
+![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-13.0-brightgreen.svg)
+![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-14.0-brightgreen.svg)
 
 
 ## 安装
