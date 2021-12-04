@@ -56,30 +56,6 @@ func NewParse(sid, query string) *Frame {
 	return p
 }
 
-func NewBind(stat string, args [][]byte) *Frame {
-	b := &Frame{
-		Name:    'B',
-		Payload: []byte{},
-	}
-	// Portal
-	b.writeString("")
-	// statement
-	b.writeString(stat)
-	// parameter formats
-	b.writeUint16(0)
-	// parameter values
-	b.writeUint16(uint16(len(args)))
-	for _, arg := range args {
-		// length
-		b.writeUint32(uint32(len(arg)))
-		// data
-		b.writeBytes(arg)
-	}
-	// Result formats
-	b.writeUint16(0)
-	return b
-}
-
 func NewExecute() *Frame {
 	e := &Frame{
 		Name:    'E',

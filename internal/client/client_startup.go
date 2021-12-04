@@ -8,13 +8,11 @@ package client
 
 import (
 	"bufio"
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"github.com/blusewang/pg/internal/frame"
-	"github.com/blusewang/pg/internal/helper"
 	"io/ioutil"
 	"log"
 	"net"
@@ -22,26 +20,27 @@ import (
 	"time"
 )
 
-func (c *Client) connect(ctx context.Context, dsn helper.DataSourceName) (err error) {
-	nw, addr, timeout := dsn.Address()
+func (c *Client) connect() (err error) {
+	nw, addr, timeout := c.dsn.Address()
 	d := net.Dialer{Timeout: timeout}
-	c.conn, err = d.DialContext(ctx, nw, addr)
+	c.conn, err = d.DialContext(c.ctx, nw, addr)
 	if err != nil {
-		log.Println(ctx, nw, addr, err)
+		log.Println(nw, addr, err)
 		return
 	}
-	if dsn.SSL.Mode != "disable" && dsn.SSL.Mode != "allow" {
-		if err = c.ssl(dsn); err != nil {
+	if c.dsn.SSL.Mode != "disable" && c.dsn.SSL.Mode != "allow" {
+		if err = c.ssl(); err != nil {
 			return
 		}
 	}
 	c.writer = frame.NewEncoder(c.conn)
 	c.reader = frame.NewDecoder(c.conn)
 
-	return c.startup(dsn)
+	return c.startup()
 }
 
-func (c *Client) ssl(dsn helper.DataSourceName) (err error) {
+// ssl 按配置条件尝试TLS握手
+func (c *Client) ssl() (err error) {
 	var tlsConfig tls.Config
 	if err = frame.NewEncoder(c.conn).Fire(frame.NewSSLRequest()); err != nil {
 		return
@@ -53,12 +52,12 @@ func (c *Client) ssl(dsn helper.DataSourceName) (err error) {
 		return
 	}
 
-	switch dsn.SSL.Mode {
+	switch c.dsn.SSL.Mode {
 	case "prefer":
 		if code == 'N' {
 			// 服务器不支持，转用明文传输
 			return nil
-		} else if err = dsn.SSLCheck(); err != nil {
+		} else if err = c.dsn.SSLCheck(); err != nil {
 			// 服务器支持，但本地证书检查不通过，也转用明文传输
 			return nil
 		}
@@ -68,37 +67,37 @@ func (c *Client) ssl(dsn helper.DataSourceName) (err error) {
 			return errors.New("pq: SSL is not enabled on the server")
 		}
 		// 如果没有根证书，标记为只验证证书
-		if _, err = os.Stat(dsn.SSL.RootCert); err == nil {
+		if _, err = os.Stat(c.dsn.SSL.RootCert); err == nil {
 			tlsConfig.InsecureSkipVerify = true
 		}
 	case "verify-ca":
 		if code == 'N' {
 			return errors.New("pq: SSL is not enabled on the server")
 		}
-		tlsConfig.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = false
 	case "verify-full":
 		if code == 'N' {
 			return errors.New("pq: SSL is not enabled on the server")
 		}
-		tlsConfig.ServerName = dsn.Host
+		tlsConfig.ServerName = c.dsn.Host
 	default:
 		return errors.New("pq: SSL unknown type")
 	}
 
-	if err = dsn.SSLCheck(); err != nil {
+	if err = c.dsn.SSLCheck(); err != nil {
 		return
 	}
 	tlsConfig.Renegotiation = tls.RenegotiateFreelyAsClient
-	cert, err := tls.LoadX509KeyPair(dsn.SSL.Cert, dsn.SSL.Key)
+	cert, err := tls.LoadX509KeyPair(c.dsn.SSL.Cert, c.dsn.SSL.Key)
 	if err != nil {
 		return err
 	}
 	tlsConfig.Certificates = []tls.Certificate{cert}
 
-	if _, err = os.Stat(dsn.SSL.RootCert); err == nil {
+	if _, err = os.Stat(c.dsn.SSL.RootCert); err == nil {
 		tlsConfig.RootCAs = x509.NewCertPool()
 		var raw []byte
-		raw, err = ioutil.ReadFile(dsn.SSL.RootCert)
+		raw, err = ioutil.ReadFile(c.dsn.SSL.RootCert)
 		if err != nil {
 			return err
 		}
@@ -107,6 +106,8 @@ func (c *Client) ssl(dsn helper.DataSourceName) (err error) {
 		}
 	}
 
+	c.tlsConfig = &tlsConfig
+
 	// 升级至TLS
 	c.conn = tls.Client(c.conn, &tlsConfig)
 	c.writer = frame.NewEncoder(c.conn)
@@ -114,11 +115,13 @@ func (c *Client) ssl(dsn helper.DataSourceName) (err error) {
 	return
 }
 
-func (c *Client) startup(dsn helper.DataSourceName) (err error) {
+// startup 启动
+func (c *Client) startup() (err error) {
 	su := frame.NewStartup()
-	for k, v := range dsn.Parameter {
+	for k, v := range c.dsn.Parameter {
 		su.AddParam(k, v)
 	}
+	// 最后多补个空，表示结束
 	su.WriteUint8(0)
 	if err = c.writer.Fire(su.Frame); err != nil {
 		return
@@ -134,13 +137,13 @@ func (c *Client) startup(dsn helper.DataSourceName) (err error) {
 			switch f.GetType() {
 			case frame.AuthTypePwd:
 				ar := frame.NewAuthResponse()
-				ar.Password(dsn.Password)
+				ar.Password(c.dsn.Password)
 				if err = c.writer.Fire(ar.Frame); err != nil {
 					return
 				}
 			case frame.AuthTypeMd5:
 				ar := frame.NewAuthResponse()
-				ar.Md5Pwd(dsn.Parameter["user"], dsn.Password, string(f.GetMd5Salt()))
+				ar.Md5Pwd(c.dsn.Parameter["user"], c.dsn.Password, string(f.GetMd5Salt()))
 				if err = c.writer.Fire(ar.Frame); err != nil {
 					return
 				}
@@ -167,13 +170,15 @@ func (c *Client) startup(dsn helper.DataSourceName) (err error) {
 	}
 }
 
+// readerLoop 开启实时读取
+// 实时处理异步数据
 func (c *Client) readerLoop() {
 	var out interface{}
 	var err error
 	for {
 		out, err = c.reader.Decode()
 		if err != nil {
-			_ = c.Terminate()
+			c.IOError = err
 			return
 		}
 		switch f := out.(type) {
@@ -190,6 +195,9 @@ func (c *Client) readerLoop() {
 			f.Decode()
 			c.Err = f
 			c.status = frame.TransactionStatusNoReady
+			raw, _ := json.Marshal(f.Error)
+			log.Println(string(raw))
+			c.frameChan <- f
 			if f.Error.Fail == "FATAL" || f.Error.Fail == "PANIC" {
 				_ = c.Terminate()
 				return

@@ -20,7 +20,6 @@ import (
 const headerSize = 4
 
 type PgRows struct {
-	isStrict bool
 	location *time.Location
 	columns  *frame.RowDescription
 	rows     []*frame.DataRow
@@ -28,6 +27,9 @@ type PgRows struct {
 }
 
 func (pr *PgRows) Columns() (cols []string) {
+	if pr.columns == nil {
+		return
+	}
 	for _, v := range pr.columns.Columns {
 		cols = append(cols, v.Name)
 	}
@@ -51,7 +53,7 @@ func (pr *PgRows) Next(dest []driver.Value) error {
 		return io.EOF
 	}
 	for k, v := range (pr.rows)[pr.position].DataArr {
-		dest[k] = convert(v, pr.columns.Columns[k], pr.location, pr.isStrict)
+		dest[k] = convert(v, pr.columns.Columns[k], pr.location)
 	}
 	pr.position += 1
 	return nil

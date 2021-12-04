@@ -7,6 +7,7 @@
 package driver
 
 import (
+	"database/sql/driver"
 	"errors"
 )
 
@@ -16,7 +17,7 @@ type PgTx struct {
 
 func (t PgTx) Commit() (err error) {
 	if t.pgConn.io.IOError != nil {
-		return t.pgConn.io.Err.Error
+		return driver.ErrBadConn
 	}
 	if t.pgConn.io.IsInTransaction() == false {
 		err = errors.New("this connection is out of transaction")
@@ -33,7 +34,7 @@ func (t PgTx) Commit() (err error) {
 
 func (t PgTx) Rollback() (err error) {
 	if t.pgConn.io.IOError != nil {
-		return t.pgConn.io.Err.Error
+		return driver.ErrBadConn
 	}
 	if t.pgConn.io.IsInTransaction() == false {
 		err = errors.New("this connection is out of transaction")

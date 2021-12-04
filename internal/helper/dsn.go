@@ -25,7 +25,6 @@ type DataSourceName struct {
 	Password       string
 	ConnectTimeout time.Duration
 	Parameter      map[string]string
-	IsStrict       bool
 	SSL            struct {
 		Mode        string
 		Cert        string
@@ -48,7 +47,6 @@ func ParseDSN(connectStr string) (dsn *DataSourceName, err error) {
 }
 
 func (dsn *DataSourceName) setDefault() {
-	dsn.IsStrict = true
 	dsn.Port = "5432"
 	dsn.Parameter = make(map[string]string)
 	dsn.Parameter["user"] = "postgres"
@@ -142,10 +140,6 @@ func (dsn *DataSourceName) parseDSN(str string) (err error) {
 		dsn.ConnectTimeout = time.Duration(to) * time.Second
 		delete(p, "connect_timeout")
 	}
-	if strict, has := p["strict"]; has {
-		dsn.IsStrict = strict == "true"
-		delete(p, "strict")
-	}
 
 	dsn.pickSSLSetting(&p)
 
@@ -207,10 +201,6 @@ func (dsn *DataSourceName) parseURI(uri string) (err error) {
 	if host, has := qm["host"]; has {
 		dsn.Host = host
 		delete(qm, "host")
-	}
-	if strict, has := qm["strict"]; has {
-		dsn.IsStrict = strict == "true"
-		delete(qm, "strict")
 	}
 
 	dsn.pickSSLSetting(&qm)

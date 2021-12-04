@@ -23,7 +23,7 @@ import (
 type PgConn struct {
 	dsn   *helper.DataSourceName
 	io    *client.Client
-	stmts map[string]PgStmt
+	stmts map[string]*PgStmt
 }
 
 func NewPgConn(name string) (c PgConn, err error) {
@@ -36,7 +36,7 @@ func NewPgConn(name string) (c PgConn, err error) {
 	if err != nil {
 		return
 	}
-	c.stmts = make(map[string]PgStmt)
+	c.stmts = make(map[string]*PgStmt)
 	return
 }
 
@@ -51,16 +51,16 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 	if err != nil {
 		return
 	}
-	c.stmts = make(map[string]PgStmt)
+	c.stmts = make(map[string]*PgStmt)
 	return
 }
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c PgConn) Prepare(query string) (driver.Stmt, error) {
 	if c.io.IOError != nil {
-		return nil, c.io.Err.Error
+		return nil, driver.ErrBadConn
 	}
-	return NewPgStmt(c, query)
+	return NewPgStmt(&c, query)
 }
 
 // Close invalidates and potentially stops any current
@@ -81,7 +81,7 @@ func (c PgConn) Close() (err error) {
 // Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
 func (c PgConn) Begin() (_ driver.Tx, err error) {
 	if c.io.IOError != nil {
-		return nil, c.io.Err.Error
+		return nil, driver.ErrBadConn
 	}
 	if c.io.IsInTransaction() {
 		err = errors.New("this connection is in transaction")
@@ -97,8 +97,8 @@ func (c PgConn) Begin() (_ driver.Tx, err error) {
 	return &PgTx{pgConn: c}, nil
 }
 
-func (c PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err error) {
-	stmt, err := NewPgStmt(c, query)
+func (c PgConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (_ driver.Rows, err error) {
+	stmt, err := NewPgStmt(&c, query)
 	// 在判断 err 是否为 null前定义defer方法。
 	defer func() {
 		if err != nil {
@@ -111,7 +111,7 @@ func (c PgConn) Query(query string, args []driver.Value) (_ driver.Rows, err err
 	if err != nil {
 		return nil, err
 	}
-	return stmt.Query(args)
+	return stmt.QueryContext(ctx, args)
 }
 
 // CheckNamedValue NamedValueChecker可以可选地由Conn或Stmt实现。 它为驱动程序提供了更多控制来处理Go和数据库类型，超出了允许的默认值类型。

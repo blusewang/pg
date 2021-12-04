@@ -14,46 +14,48 @@ import (
 	"github.com/blusewang/pg/internal/client"
 )
 
-func NewPgStmt(conn PgConn, query string) (st PgStmt, err error) {
-	if conn.io.IOError != nil {
-		err = conn.io.Err.Error
-		return
-	}
-	var id = fmt.Sprintf("%x", md5.Sum([]byte(query)))
-	st = conn.stmts[id]
-	if st.Identifies == "" {
-		st = *new(PgStmt)
-		st.pgConn = conn
-		st.Identifies = id
-		st.Sql = query
-		st.Response, err = st.pgConn.io.Parse(st.Identifies, st.Sql)
-		st.resultSig = make(chan int)
-		conn.stmts[id] = st
-	}
-	return st, err
-}
-
 type PgStmt struct {
-	pgConn     PgConn
+	pgConn     *PgConn
 	Identifies string
 	Sql        string
 	Response   client.Response
 	resultSig  chan int
 }
 
-func (s PgStmt) Close() (err error) {
-	if s.pgConn.io.IOError != nil {
-		return s.pgConn.io.Err.Error
-	}
-	err = s.pgConn.io.CloseParse(s.Identifies)
-	if err != nil {
+func NewPgStmt(conn *PgConn, query string) (st PgStmt, err error) {
+	if conn.io.IOError != nil {
+		err = driver.ErrBadConn
 		return
 	}
-	close(s.resultSig)
-	if s.pgConn.stmts[s.Identifies].Identifies != "" {
-		delete(s.pgConn.stmts, s.Identifies)
+	var id = fmt.Sprintf("%x", md5.Sum([]byte(query)))
+
+	if conn.stmts[id] == nil {
+		st.pgConn = conn
+		st.Identifies = id
+		st.Sql = query
+		st.Response, err = st.pgConn.io.Parse(st.Identifies, st.Sql)
+		st.resultSig = make(chan int)
+		if err == nil {
+			conn.stmts[id] = &st
+		}
+	} else {
+		st = *conn.stmts[id]
 	}
-	return nil
+	return
+}
+
+func (s PgStmt) Close() (err error) {
+	if s.pgConn.io.IOError != nil {
+		return driver.ErrBadConn
+	}
+	if s.pgConn.stmts[s.Identifies] == nil {
+		err = s.pgConn.io.CloseParse(s.Identifies)
+		if err != nil {
+			return
+		}
+		close(s.resultSig)
+	}
+	return
 }
 
 func (s PgStmt) NumInput() int {
@@ -65,27 +67,20 @@ func (s PgStmt) NumInput() int {
 
 func (s PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
 	if s.pgConn.io.IOError != nil {
-		return nil, s.pgConn.io.Err.Error
+		return nil, driver.ErrBadConn
 	}
-	var as [][]byte
-	for _, v := range args {
-		as = append(as, driverValue2Pg(v))
-	}
-	response, err := s.pgConn.io.ParseExec(s.Identifies, as)
+	response, err := s.pgConn.io.ParseExec(s.Identifies, args)
 	return driver.RowsAffected(response.Completion.Affected()), err
 }
 
 func (s PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
-	var as [][]byte
-	for _, v := range args {
-		as = append(as, driverValue2Pg(v))
+	if s.pgConn.io.IOError != nil {
+		return nil, driver.ErrBadConn
 	}
-
 	var pr = new(PgRows)
-	pr.isStrict = s.pgConn.dsn.IsStrict
 	pr.location = s.pgConn.io.Location
 	pr.columns = s.Response.Description
-	res, err := s.pgConn.io.ParseQuery(s.Identifies, as)
+	res, err := s.pgConn.io.ParseQuery(s.Identifies, args)
 	pr.rows = res.DataRows
 	return pr, err
 }
@@ -98,11 +93,11 @@ func (s PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driv
 	go s.watchCancel(ctx)
 	defer s.complete()
 	if s.pgConn.io.IOError != nil {
-		return nil, s.pgConn.io.Err.Error
+		return nil, driver.ErrBadConn
 	}
-	var as [][]byte
+	var as []driver.Value
 	for _, v := range args {
-		as = append(as, driverValue2Pg(v.Value))
+		as = append(as, v.Value)
 	}
 	n, err := s.pgConn.io.ParseExec(s.Identifies, as)
 	return driver.RowsAffected(n.Completion.Affected()), err
@@ -116,16 +111,15 @@ func (s PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ d
 	go s.watchCancel(ctx)
 	defer s.complete()
 	if s.pgConn.io.IOError != nil {
-		return nil, s.pgConn.io.Err.Error
+		return nil, driver.ErrBadConn
 	}
 
-	var as [][]byte
+	var as []driver.Value
 	for _, v := range args {
-		as = append(as, driverValue2Pg(v.Value))
+		as = append(as, v.Value)
 	}
 
 	var pr = new(PgRows)
-	pr.isStrict = s.pgConn.dsn.IsStrict
 	pr.location = s.pgConn.io.Location
 	pr.columns = s.Response.Description
 	res, err := s.pgConn.io.ParseQuery(s.Identifies, as)

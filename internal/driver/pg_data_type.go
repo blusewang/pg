@@ -1,4 +1,4 @@
-// Copyright 2019 MQ, Inc. All rights reserved.
+// Copyright 2021 YBCZ, Inc. All rights reserved.
 //
 // Use of this source code is governed by a MIT license
 // that can be found in the LICENSE file in the root of the source
@@ -22,9 +22,9 @@ import (
 )
 
 // 针对需改造的数据做转换
-func convert(raw []byte, col frame.Column, location *time.Location, isStrict bool) driver.Value {
-	if raw == nil && isStrict {
-		// is nil
+func convert(raw []byte, col frame.Column, location *time.Location) driver.Value {
+	if raw == nil {
+		// 这个返回，就能支持`null`
 		return nil
 	}
 	if col.Format != 0 {

@@ -7,8 +7,10 @@
 package client
 
 import (
+	"database/sql/driver"
 	"github.com/blusewang/pg/internal/frame"
 	"io"
+	"net"
 )
 
 func (c *Client) getFrames() (list []interface{}, err error) {
@@ -87,7 +89,7 @@ func (c *Client) Parse(name, query string) (res Response, err error) {
 }
 
 // ParseExec BindFrame
-func (c *Client) ParseExec(name string, args [][]byte) (res Response, err error) {
+func (c *Client) ParseExec(name string, args []driver.Value) (res Response, err error) {
 	c.Err = nil
 	if err = c.writer.Encode(frame.NewBind(name, args)); err != nil {
 		return
@@ -124,7 +126,7 @@ func (c *Client) ParseExec(name string, args [][]byte) (res Response, err error)
 }
 
 // ParseQuery BindFrame
-func (c *Client) ParseQuery(name string, args [][]byte) (res Response, err error) {
+func (c *Client) ParseQuery(name string, args []driver.Value) (res Response, err error) {
 	c.Err = nil
 	if err = c.writer.Encode(frame.NewBind(name, args)); err != nil {
 		return
@@ -174,27 +176,28 @@ func (c *Client) CloseParse(name string) (err error) {
 	return
 }
 
+// CancelRequest 建立新连接，使用PID+口令从新连接中发出指令
 func (c *Client) CancelRequest() (err error) {
-	if err = c.writer.Encode(frame.NewCancelRequest(c.backendPid, c.backendKey)); err != nil {
+	n, addr, _ := c.dsn.Address()
+	conn, err := net.Dial(n, addr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if err = frame.NewEncoder(conn).Encode(frame.NewCancelRequest(c.backendPid, c.backendKey)); err != nil {
 		return
 	}
-	if err = c.writer.Encode(frame.NewSync()); err != nil {
-		return
-	}
-	if err = c.writer.Flush(); err != nil {
-		return
-	}
-	_, err = c.getFrames()
 	return
 }
 
 func (c *Client) Terminate() (err error) {
-	_ = c.writer.Fire(frame.NewTermination())
-	close(c.responseChan)
-	close(c.frameChan)
-	c.parameterStatus = nil
-	c.status = frame.TransactionStatusNoReady
-	c.IOError = io.EOF
+	if c.IOError == nil {
+		_ = c.writer.Fire(frame.NewTermination())
+		close(c.frameChan)
+		c.parameterStatus = nil
+		c.status = frame.TransactionStatusNoReady
+		c.IOError = io.EOF
+	}
 	return c.conn.Close()
 }
 

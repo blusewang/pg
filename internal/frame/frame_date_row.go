@@ -17,7 +17,7 @@ func (dr *DataRow) Decode() {
 	dr.Count = dr.readUint16()
 	for i := uint16(0); i < dr.Count; i++ {
 		length := dr.readUint32()
-		if length == 4294967295 {
+		if length == MaxUint32 {
 			dr.DataArr = append(dr.DataArr, nil)
 		} else {
 			dr.DataArr = append(dr.DataArr, dr.readLength(int(length)))
