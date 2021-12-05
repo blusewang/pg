@@ -8,7 +8,6 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
 	"github.com/blusewang/pg/internal/frame"
 	"github.com/blusewang/pg/internal/helper"
 	"net"
@@ -20,13 +19,10 @@ var (
 )
 
 type Client struct {
-	ctx           context.Context         // 了解不深
 	dsn           helper.DataSourceName   // 取消任务时需要
 	conn          net.Conn                // 底层连接
-	isTLS         *bool                   // 是否加密传输
-	tlsConfig     *tls.Config             // tls 配置缓存
-	writer        *frame.Encoder          // 流式编码
-	reader        *frame.Decoder          // 流式解码
+	writer        *frame.Encoder          // 流式编码器
+	reader        *frame.Decoder          // 流式解码器
 	backendPid    uint32                  // 业务过程中 后端PID 取消操作时需要
 	backendKey    uint32                  // 业务过程中 后端口令 取消操作时需要
 	parameterMaps map[string]string       // 服务器提供的属性参数
@@ -46,14 +42,20 @@ type Response struct {
 	Completion           *frame.CommandCompletion
 }
 
+// Statement 可缓存的语句
+type Statement struct {
+	Id       string
+	SQL      string
+	Response Response
+}
+
 // NewClient 创建客户端对象
 func NewClient(ctx context.Context, dsn helper.DataSourceName) (c *Client, err error) {
 	c = new(Client)
 	c.dsn = dsn
-	c.ctx = ctx
 	c.status = frame.TransactionStatusNoReady
 	c.parameterMaps = make(map[string]string)
 	c.StatementMaps = make(map[string]*Statement)
-	c.frameChan = make(chan interface{}, 100)
-	return c, c.connect()
+	c.frameChan = make(chan interface{})
+	return c, c.connect(ctx)
 }

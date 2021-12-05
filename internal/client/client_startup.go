@@ -8,6 +8,7 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -20,10 +21,10 @@ import (
 	"time"
 )
 
-func (c *Client) connect() (err error) {
+func (c *Client) connect(ctx context.Context) (err error) {
 	nw, addr, timeout := c.dsn.Address()
 	d := net.Dialer{Timeout: timeout}
-	c.conn, err = d.DialContext(c.ctx, nw, addr)
+	c.conn, err = d.DialContext(ctx, nw, addr)
 	if err != nil {
 		log.Println(nw, addr, err)
 		return
@@ -39,7 +40,7 @@ func (c *Client) connect() (err error) {
 	return c.startup()
 }
 
-// ssl 按配置条件尝试TLS握手
+// ssl 按配置中的严格程度开始TLS握手
 func (c *Client) ssl() (err error) {
 	var tlsConfig tls.Config
 	if err = frame.NewEncoder(c.conn).Fire(frame.NewSSLRequest()); err != nil {
@@ -105,8 +106,6 @@ func (c *Client) ssl() (err error) {
 			return errors.New("pg: can't parse root cert")
 		}
 	}
-
-	c.tlsConfig = &tlsConfig
 
 	// 升级至TLS
 	c.conn = tls.Client(c.conn, &tlsConfig)
