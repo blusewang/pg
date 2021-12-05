@@ -13,23 +13,6 @@ import (
 	"net"
 )
 
-func (c *Client) getFrames() (list []interface{}, err error) {
-	for {
-		out, isOpen := <-c.frameChan
-		if !isOpen {
-			err = io.EOF
-			return
-		}
-		list = append(list, out)
-		if e, has := out.(*frame.Error); has {
-			err = e.Error
-		}
-		if _, has := out.(*frame.ReadyForQuery); has {
-			return
-		}
-	}
-}
-
 func (c *Client) QueryNoArgs(query string) (res Response, err error) {
 	if err = c.writer.Fire(frame.NewSimpleQuery(query)); err != nil {
 		return
@@ -192,6 +175,7 @@ func (c *Client) CancelRequest() (err error) {
 func (c *Client) Terminate() (err error) {
 	if c.IOError == nil {
 		_ = c.writer.Fire(frame.NewTermination())
+		close(c.frameChan)
 	}
 	c.parameterMaps = nil
 	c.StatementMaps = nil

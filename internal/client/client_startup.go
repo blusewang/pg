@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"github.com/blusewang/pg/internal/frame"
 	"io/ioutil"
@@ -165,49 +164,6 @@ func (c *Client) startup() (err error) {
 			c.status = frame.TransactionStatus(f.Payload[0])
 			go c.readerLoop()
 			return nil
-		}
-	}
-}
-
-// readerLoop 开启实时读取
-// 实时处理异步数据
-func (c *Client) readerLoop() {
-	var out interface{}
-	var err error
-	for {
-		out, err = c.reader.Decode()
-		if err != nil {
-			c.IOError = err
-			close(c.frameChan)
-			return
-		}
-		switch f := out.(type) {
-		case *frame.Notification:
-			f.Decode()
-			if ListenMap[f.Condition] != nil {
-				ListenMap[f.Condition](f.Text)
-			}
-		case *frame.NoticeResponse:
-			f.Decode()
-			raw, _ := json.Marshal(f.Error.Error)
-			log.Println(string(raw))
-		case *frame.Error:
-			f.Decode()
-			c.Err = f
-			c.status = frame.TransactionStatusNoReady
-			raw, _ := json.Marshal(f.Error)
-			log.Println(string(raw))
-			c.frameChan <- f
-			if f.Error.Fail == "FATAL" || f.Error.Fail == "PANIC" {
-				// TODO 自动重连
-				_ = c.Terminate()
-				return
-			}
-		case *frame.ReadyForQuery:
-			c.status = frame.TransactionStatus(f.Payload[0])
-			c.frameChan <- f
-		default:
-			c.frameChan <- f
 		}
 	}
 }
