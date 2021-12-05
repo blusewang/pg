@@ -151,7 +151,7 @@ func (c *Client) startup() (err error) {
 			}
 		case *frame.ParameterStatus:
 			f.Decode()
-			c.parameterStatus[f.Name] = f.Value
+			c.parameterMaps[f.Name] = f.Value
 			if f.Name == "TimeZone" {
 				c.Location, err = time.LoadLocation(f.Value)
 				if err != nil {
@@ -179,6 +179,7 @@ func (c *Client) readerLoop() {
 		out, err = c.reader.Decode()
 		if err != nil {
 			c.IOError = err
+			close(c.frameChan)
 			return
 		}
 		switch f := out.(type) {
@@ -199,6 +200,7 @@ func (c *Client) readerLoop() {
 			log.Println(string(raw))
 			c.frameChan <- f
 			if f.Error.Fail == "FATAL" || f.Error.Fail == "PANIC" {
+				// TODO 自动重连
 				_ = c.Terminate()
 				return
 			}

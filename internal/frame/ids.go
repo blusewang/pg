@@ -14,5 +14,3 @@ const (
 	TransactionStatusIdleInTransaction   = 'T'
 	TransactionStatusInFailedTransaction = 'E'
 )
-
-const MaxUint32 uint32 = 4294967295

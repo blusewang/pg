@@ -21,9 +21,8 @@ import (
 )
 
 type PgConn struct {
-	dsn   *helper.DataSourceName
-	io    *client.Client
-	stmts map[string]*PgStmt
+	dsn    *helper.DataSourceName
+	client *client.Client
 }
 
 func NewPgConn(name string) (c PgConn, err error) {
@@ -32,11 +31,10 @@ func NewPgConn(name string) (c PgConn, err error) {
 		return
 	}
 
-	c.io, err = client.NewClient(context.Background(), *c.dsn)
+	c.client, err = client.NewClient(context.Background(), *c.dsn)
 	if err != nil {
 		return
 	}
-	c.stmts = make(map[string]*PgStmt)
 	return
 }
 
@@ -47,65 +45,86 @@ func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 		return
 	}
 
-	c.io, err = client.NewClient(ctx, *c.dsn)
+	c.client, err = client.NewClient(ctx, *c.dsn)
 	if err != nil {
 		return
 	}
-	c.stmts = make(map[string]*PgStmt)
 	return
 }
 
-// Prepare returns a prepared statement, bound to this connection.
-func (c PgConn) Prepare(query string) (driver.Stmt, error) {
-	if c.io.IOError != nil {
+func (c PgConn) PrepareContext(ctx context.Context, query string) (stmt driver.Stmt, err error) {
+	if c.client.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
-	return NewPgStmt(&c, query)
+	return NewPgStmtContext(ctx, c.client, query)
 }
 
-// Close invalidates and potentially stops any current
-// prepared statements and transactions, marking this
-// connection as no longer in use.
-//
-// Because the sql package maintains a free pool of
-// connections and only calls Close when there's a surplus of
-// idle connections, it shouldn't be necessary for drivers to
-// do their own connection caching.
-func (c PgConn) Close() (err error) {
-	err = c.io.Terminate()
-	return
-}
-
-// Begin starts and returns a new transaction.
-//
-// Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
-func (c PgConn) Begin() (_ driver.Tx, err error) {
-	if c.io.IOError != nil {
+func (c PgConn) BeginTx(ctx context.Context, opts driver.TxOptions) (tx driver.Tx, err error) {
+	if c.client.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
-	if c.io.IsInTransaction() {
+	if c.client.IsInTransaction() {
 		err = errors.New("this connection is in transaction")
 	}
-	_, err = c.io.QueryNoArgs("begin")
+	_, err = c.client.QueryNoArgs("begin")
 	if err != nil {
 		return
 	}
-	if !c.io.IsInTransaction() {
+	if !c.client.IsInTransaction() {
 		err = errors.New("begin fail")
 	}
 
 	return &PgTx{pgConn: c}, nil
 }
 
-func (c PgConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (_ driver.Rows, err error) {
-	stmt, err := NewPgStmt(&c, query)
+func (c PgConn) Begin() (_ driver.Tx, err error) {
+	if c.client.IOError != nil {
+		return nil, driver.ErrBadConn
+	}
+	if c.client.IsInTransaction() {
+		err = errors.New("this connection is in transaction")
+	}
+	_, err = c.client.QueryNoArgs("begin")
+	if err != nil {
+		return
+	}
+	if !c.client.IsInTransaction() {
+		err = errors.New("begin fail")
+	}
+
+	return &PgTx{pgConn: c}, nil
+}
+
+// Prepare returns a prepared statement, bound to this connection.
+func (c PgConn) Prepare(query string) (driver.Stmt, error) {
+	if c.client.IOError != nil {
+		return nil, driver.ErrBadConn
+	}
+	return NewPgStmt(c.client, query)
+}
+
+func (c PgConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (res driver.Result, err error) {
+	stmt, err := NewPgStmt(c.client, query)
 	// 在判断 err 是否为 null前定义defer方法。
 	defer func() {
 		if err != nil {
-			if stmt.Identifies != "" {
-				delete(c.stmts, stmt.Identifies)
-				_ = c.io.CloseParse(stmt.Identifies)
-			}
+			delete(c.client.StatementMaps, stmt.Id)
+			_ = c.client.CloseParse(stmt.Id)
+		}
+	}()
+	if err != nil {
+		return nil, err
+	}
+	return stmt.ExecContext(ctx, args)
+}
+
+func (c PgConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (_ driver.Rows, err error) {
+	stmt, err := NewPgStmt(c.client, query)
+	// 在判断 err 是否为 null前定义defer方法。
+	defer func() {
+		if err != nil {
+			delete(c.client.StatementMaps, stmt.Id)
+			_ = c.client.CloseParse(stmt.Id)
 		}
 	}()
 	if err != nil {
@@ -245,5 +264,10 @@ func (c PgConn) CheckNamedValue(nv *driver.NamedValue) error {
 }
 
 func (c PgConn) cancel() {
-	_ = c.io.CancelRequest()
+	_ = c.client.CancelRequest()
+}
+
+func (c PgConn) Close() (err error) {
+	err = c.client.Terminate()
+	return
 }

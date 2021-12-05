@@ -9,6 +9,7 @@ package frame
 import (
 	"database/sql/driver"
 	"go/types"
+	"math"
 	"strconv"
 	"time"
 )
@@ -28,7 +29,7 @@ func NewBind(stat string, args []driver.Value) *Frame {
 	b.writeUint16(uint16(len(args)))
 	for _, arg := range args {
 		if arg == nil {
-			b.writeUint32(MaxUint32)
+			b.writeUint32(math.MaxUint32)
 		} else {
 			// 转换
 			raw := value2Row(arg)

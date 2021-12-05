@@ -15,45 +15,62 @@ import (
 )
 
 type PgStmt struct {
-	pgConn     *PgConn
-	Identifies string
-	Sql        string
-	Response   client.Response
-	resultSig  chan int
+	client.Statement
+	client    *client.Client
+	resultSig chan int
 }
 
-func NewPgStmt(conn *PgConn, query string) (st PgStmt, err error) {
-	if conn.io.IOError != nil {
+func NewPgStmt(client *client.Client, query string) (st PgStmt, err error) {
+	if client.IOError != nil {
 		err = driver.ErrBadConn
 		return
 	}
 	var id = fmt.Sprintf("%x", md5.Sum([]byte(query)))
 
-	if conn.stmts[id] == nil {
-		st.pgConn = conn
-		st.Identifies = id
-		st.Sql = query
-		st.Response, err = st.pgConn.io.Parse(st.Identifies, st.Sql)
-		st.resultSig = make(chan int)
+	if client.StatementMaps[id] == nil {
+		st.client = client
+		st.Id = id
+		st.SQL = query
+		st.Response, err = client.Parse(st.Id, st.SQL)
 		if err == nil {
-			conn.stmts[id] = &st
+			client.StatementMaps[id] = &st.Statement
 		}
 	} else {
-		st = *conn.stmts[id]
+		st = PgStmt{client: client, Statement: *client.StatementMaps[id]}
 	}
+	st.resultSig = make(chan int)
+	return
+}
+
+func NewPgStmtContext(ctx context.Context, client *client.Client, query string) (st PgStmt, err error) {
+	if client.IOError != nil {
+		err = driver.ErrBadConn
+		return
+	}
+	var id = fmt.Sprintf("%x", md5.Sum([]byte(query)))
+
+	if client.StatementMaps[id] == nil {
+		st.client = client
+		st.Id = id
+		st.SQL = query
+		st.Response, err = client.Parse(st.Id, st.SQL)
+		if err == nil {
+			client.StatementMaps[id] = &st.Statement
+		}
+	} else {
+		st = PgStmt{client: client, Statement: *client.StatementMaps[id]}
+	}
+	st.resultSig = make(chan int)
 	return
 }
 
 func (s PgStmt) Close() (err error) {
-	if s.pgConn.io.IOError != nil {
+	if s.client.IOError != nil {
 		return driver.ErrBadConn
 	}
-	if s.pgConn.stmts[s.Identifies] == nil {
-		err = s.pgConn.io.CloseParse(s.Identifies)
-		if err != nil {
-			return
-		}
-		close(s.resultSig)
+	// 当缓存里没有时，关闭语句
+	if s.client.StatementMaps[s.Id] == nil {
+		return s.client.CloseParse(s.Id)
 	}
 	return
 }
@@ -66,21 +83,21 @@ func (s PgStmt) NumInput() int {
 }
 
 func (s PgStmt) Exec(args []driver.Value) (res driver.Result, err error) {
-	if s.pgConn.io.IOError != nil {
+	if s.client.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
-	response, err := s.pgConn.io.ParseExec(s.Identifies, args)
+	response, err := s.client.ParseExec(s.Id, args)
 	return driver.RowsAffected(response.Completion.Affected()), err
 }
 
 func (s PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
-	if s.pgConn.io.IOError != nil {
+	if s.client.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
 	var pr = new(PgRows)
-	pr.location = s.pgConn.io.Location
+	pr.location = s.client.Location
 	pr.columns = s.Response.Description
-	res, err := s.pgConn.io.ParseQuery(s.Identifies, args)
+	res, err := s.client.ParseQuery(s.Id, args)
 	pr.rows = res.DataRows
 	return pr, err
 }
@@ -92,14 +109,14 @@ func (s PgStmt) Query(args []driver.Value) (_ driver.Rows, err error) {
 func (s PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	go s.watchCancel(ctx)
 	defer s.complete()
-	if s.pgConn.io.IOError != nil {
+	if s.client.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
 	var as []driver.Value
 	for _, v := range args {
 		as = append(as, v.Value)
 	}
-	n, err := s.pgConn.io.ParseExec(s.Identifies, as)
+	n, err := s.client.ParseExec(s.Id, as)
 	return driver.RowsAffected(n.Completion.Affected()), err
 }
 
@@ -110,7 +127,7 @@ func (s PgStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driv
 func (s PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ driver.Rows, err error) {
 	go s.watchCancel(ctx)
 	defer s.complete()
-	if s.pgConn.io.IOError != nil {
+	if s.client.IOError != nil {
 		return nil, driver.ErrBadConn
 	}
 
@@ -120,9 +137,9 @@ func (s PgStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (_ d
 	}
 
 	var pr = new(PgRows)
-	pr.location = s.pgConn.io.Location
+	pr.location = s.client.Location
 	pr.columns = s.Response.Description
-	res, err := s.pgConn.io.ParseQuery(s.Identifies, as)
+	res, err := s.client.ParseQuery(s.Id, as)
 	pr.rows = res.DataRows
 	return pr, err
 }
@@ -136,7 +153,7 @@ func (s PgStmt) watchCancel(ctx context.Context) {
 }
 
 func (s PgStmt) cancel() {
-	_ = s.pgConn.io.CancelRequest()
+	_ = s.client.CancelRequest()
 }
 
 func (s PgStmt) complete() {

@@ -6,6 +6,8 @@
 
 package frame
 
+import "math"
+
 type DataRow struct {
 	*Frame
 	Count   uint16
@@ -17,7 +19,7 @@ func (dr *DataRow) Decode() {
 	dr.Count = dr.readUint16()
 	for i := uint16(0); i < dr.Count; i++ {
 		length := dr.readUint32()
-		if length == MaxUint32 {
+		if length == math.MaxUint32 {
 			dr.DataArr = append(dr.DataArr, nil)
 		} else {
 			dr.DataArr = append(dr.DataArr, dr.readLength(int(length)))

@@ -7,24 +7,24 @@
 package frame
 
 type errorStruct struct {
-	LocalError       string `json:"local_error"`
-	Fail             string `json:"error"`
-	Code             string `json:"code"`
-	Message          string `json:"message"`
-	Detail           string `json:"detail"`
-	Hint             string `json:"hint"`
-	Position         string `json:"position"`
-	InternalPosition string `json:"internal_position"`
-	InternalQuery    string `json:"internal_query"`
-	Where            string `json:"where"`
-	Schema           string `json:"schema"`
-	Table            string `json:"table"`
-	Column           string `json:"Column"`
-	DateType         string `json:"date_type"`
-	Constraint       string `json:"constraint"`
-	File             string `json:"file"`
-	Line             string `json:"line"`
-	Routine          string `json:"routine"`
+	LocalError       string `json:"local_error,omitempty"`
+	Fail             string `json:"error,omitempty"`
+	Code             string `json:"code,omitempty"`
+	Message          string `json:"message,omitempty"`
+	Detail           string `json:"detail,omitempty"`
+	Hint             string `json:"hint,omitempty"`
+	Position         string `json:"position,omitempty"`
+	InternalPosition string `json:"internal_position,omitempty"`
+	InternalQuery    string `json:"internal_query,omitempty"`
+	Where            string `json:"where,omitempty"`
+	Schema           string `json:"schema,omitempty"`
+	Table            string `json:"table,omitempty"`
+	Column           string `json:"Column,omitempty"`
+	DateType         string `json:"date_type,omitempty"`
+	Constraint       string `json:"constraint,omitempty"`
+	File             string `json:"file,omitempty"`
+	Line             string `json:"line,omitempty"`
+	Routine          string `json:"routine,omitempty"`
 }
 
 func (e errorStruct) Error() string {

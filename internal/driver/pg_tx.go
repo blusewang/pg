@@ -16,34 +16,34 @@ type PgTx struct {
 }
 
 func (t PgTx) Commit() (err error) {
-	if t.pgConn.io.IOError != nil {
+	if t.pgConn.client.IOError != nil {
 		return driver.ErrBadConn
 	}
-	if t.pgConn.io.IsInTransaction() == false {
+	if t.pgConn.client.IsInTransaction() == false {
 		err = errors.New("this connection is out of transaction")
 	}
-	_, err = t.pgConn.io.QueryNoArgs("commit")
+	_, err = t.pgConn.client.QueryNoArgs("commit")
 	if err != nil {
 		return
 	}
-	if t.pgConn.io.IsInTransaction() {
+	if t.pgConn.client.IsInTransaction() {
 		err = errors.New("commit fail")
 	}
 	return
 }
 
 func (t PgTx) Rollback() (err error) {
-	if t.pgConn.io.IOError != nil {
+	if t.pgConn.client.IOError != nil {
 		return driver.ErrBadConn
 	}
-	if t.pgConn.io.IsInTransaction() == false {
+	if t.pgConn.client.IsInTransaction() == false {
 		err = errors.New("this connection is out of transaction")
 	}
-	_, err = t.pgConn.io.QueryNoArgs("rollback")
+	_, err = t.pgConn.client.QueryNoArgs("rollback")
 	if err != nil {
 		return
 	}
-	if t.pgConn.io.IsInTransaction() {
+	if t.pgConn.client.IsInTransaction() {
 		err = errors.New("rollback fail")
 	}
 	return nil

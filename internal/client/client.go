@@ -20,21 +20,22 @@ var (
 )
 
 type Client struct {
-	ctx             context.Context         // 了解不深
-	dsn             helper.DataSourceName   // 自动重连时需要
-	conn            net.Conn                // 底层连接
-	isTLS           *bool                   // 是否加密传输
-	tlsConfig       *tls.Config             // tls 配置缓存
-	writer          *frame.Encoder          // 流式编码
-	reader          *frame.Decoder          // 流式解码
-	backendPid      uint32                  // 业务过程中 后端PID 取消操作时需要
-	backendKey      uint32                  // 业务过程中 后端口令 取消操作时需要
-	parameterStatus map[string]string       // 服务器提供的属性参数
-	Location        *time.Location          // 服务器端的时区
-	status          frame.TransactionStatus // 业务状态
-	frameChan       chan interface{}        // 帧流
-	Err             *frame.Error            // 业务上最近的错误帧
-	IOError         error                   // 底层通信错误
+	ctx           context.Context         // 了解不深
+	dsn           helper.DataSourceName   // 取消任务时需要
+	conn          net.Conn                // 底层连接
+	isTLS         *bool                   // 是否加密传输
+	tlsConfig     *tls.Config             // tls 配置缓存
+	writer        *frame.Encoder          // 流式编码
+	reader        *frame.Decoder          // 流式解码
+	backendPid    uint32                  // 业务过程中 后端PID 取消操作时需要
+	backendKey    uint32                  // 业务过程中 后端口令 取消操作时需要
+	parameterMaps map[string]string       // 服务器提供的属性参数
+	StatementMaps map[string]*Statement   // 句柄缓存，交给client管理，方便在断开时释放资源
+	Location      *time.Location          // 服务器端的时区
+	status        frame.TransactionStatus // 业务状态
+	frameChan     chan interface{}        // 帧流
+	Err           *frame.Error            // 业务上最近的错误帧
+	IOError       error                   // 底层通信错误
 }
 
 // Response 业务响应的数据集
@@ -51,13 +52,8 @@ func NewClient(ctx context.Context, dsn helper.DataSourceName) (c *Client, err e
 	c.dsn = dsn
 	c.ctx = ctx
 	c.status = frame.TransactionStatusNoReady
-	c.parameterStatus = make(map[string]string)
+	c.parameterMaps = make(map[string]string)
+	c.StatementMaps = make(map[string]*Statement)
 	c.frameChan = make(chan interface{}, 100)
 	return c, c.connect()
-}
-
-// Reconnect 重连
-func (c *Client) Reconnect() (err error) {
-	c.ctx = context.Background()
-	return c.connect()
 }

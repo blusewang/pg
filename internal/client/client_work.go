@@ -23,7 +23,6 @@ func (c *Client) getFrames() (list []interface{}, err error) {
 		list = append(list, out)
 		if e, has := out.(*frame.Error); has {
 			err = e.Error
-			return
 		}
 		if _, has := out.(*frame.ReadyForQuery); has {
 			return
@@ -193,11 +192,11 @@ func (c *Client) CancelRequest() (err error) {
 func (c *Client) Terminate() (err error) {
 	if c.IOError == nil {
 		_ = c.writer.Fire(frame.NewTermination())
-		close(c.frameChan)
-		c.parameterStatus = nil
-		c.status = frame.TransactionStatusNoReady
-		c.IOError = io.EOF
 	}
+	c.parameterMaps = nil
+	c.StatementMaps = nil
+	c.status = frame.TransactionStatusNoReady
+	c.IOError = io.EOF
 	return c.conn.Close()
 }
 
