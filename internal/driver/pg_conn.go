@@ -104,6 +104,11 @@ func (c PgConn) Prepare(query string) (driver.Stmt, error) {
 }
 
 func (c PgConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (res driver.Result, err error) {
+	if strings.HasPrefix(strings.ToLower(query), "listen") && len(args) == 0 {
+		response, err := c.client.QueryNoArgs(query)
+		res = driver.RowsAffected(response.Completion.Affected())
+		return res, err
+	}
 	stmt, err := NewPgStmt(c.client, query)
 	// 在判断 err 是否为 null前定义defer方法。
 	defer func() {
