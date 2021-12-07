@@ -7,7 +7,7 @@
 package frame
 
 type BackendKeyData struct {
-	*Frame
+	*Data
 	Pid uint32
 	Key uint32
 }

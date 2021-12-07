@@ -4,11 +4,12 @@
 // that can be found in the LICENSE file in the root of the source
 // tree.
 
-package helper
+package dsn
 
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"os/user"
@@ -35,8 +36,7 @@ type DataSourceName struct {
 	}
 }
 
-func ParseDSN(connectStr string) (dsn *DataSourceName, err error) {
-	dsn = new(DataSourceName)
+func ParseDSN(connectStr string) (dsn DataSourceName, err error) {
 	dsn.setDefault()
 	if strings.Contains(connectStr, "://") {
 		err = dsn.parseURI(connectStr)
@@ -250,7 +250,12 @@ func (dsn *DataSourceName) Address() (network, address string, timeout time.Dura
 		address = dsn.Host + "/.s.PGSQL." + dsn.Port
 	} else {
 		network = "tcp"
-		address = dsn.Host + ":" + dsn.Port
+		ip := net.ParseIP(dsn.Host)
+		if ip != nil && ip.To16() != nil {
+			address = fmt.Sprintf("[%v]:%v", dsn.Host, dsn.Port)
+		} else {
+			address = dsn.Host + ":" + dsn.Port
+		}
 	}
 	timeout = dsn.ConnectTimeout
 	return

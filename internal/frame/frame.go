@@ -11,93 +11,111 @@ import (
 	"encoding/binary"
 )
 
-type Frame struct {
+type Data struct {
 	Name     byte
 	length   uint32
 	position int
-	Payload  []byte
+	payload  []byte
 }
 
-func (f *Frame) writeUint32(uint uint32) {
+type Frame interface {
+	Type() byte
+	Length() uint32
+	Payload() []byte
+}
+
+func (f *Data) Type() byte {
+	return f.Name
+}
+
+func (f *Data) Length() uint32 {
+	return f.length
+}
+
+func (f *Data) Payload() []byte {
+	return f.payload
+}
+
+func (f *Data) writeUint32(uint uint32) {
 	raw := []byte{0, 0, 0, 0}
 	binary.BigEndian.PutUint32(raw, uint)
-	f.Payload = append(f.Payload, raw...)
+	f.payload = append(f.payload, raw...)
 }
 
-func (f *Frame) writeUint16(uint uint16) {
+func (f *Data) writeUint16(uint uint16) {
 	raw := []byte{0, 0}
 	binary.BigEndian.PutUint16(raw, uint)
-	f.Payload = append(f.Payload, raw...)
+	f.payload = append(f.payload, raw...)
 }
 
-func (f *Frame) WriteUint8(uint uint8) {
-	f.Payload = append(f.Payload, uint)
+func (f *Data) WriteUint8(uint uint8) {
+	f.payload = append(f.payload, uint)
 }
 
-func (f *Frame) writeBytes(b []byte) {
-	f.Payload = append(f.Payload, b...)
+func (f *Data) writeBytes(b []byte) {
+	f.payload = append(f.payload, b...)
 }
 
-func (f *Frame) writeString(str string) {
+func (f *Data) writeString(str string) {
 	str += string(byte(0))
-	f.Payload = append(f.Payload, []byte(str)...)
+	f.payload = append(f.payload, []byte(str)...)
 }
 
-func (f *Frame) resetPosition() {
+func (f *Data) resetPosition() {
 	f.position = 0
 }
 
-func (f *Frame) readString() (str string) {
-	if f.position >= len(f.Payload) {
+func (f *Data) readString() (str string) {
+	if f.position >= len(f.payload) {
 		return
 	}
-	position := bytes.IndexByte(f.Payload[f.position:], 0)
-	str = string(f.Payload[f.position : f.position+position])
+	position := bytes.IndexByte(f.payload[f.position:], 0)
+	str = string(f.payload[f.position : f.position+position])
 	f.position += position + 1
 	return
 }
 
-func (f *Frame) readUint64() (u uint64) {
-	if f.position >= len(f.Payload) {
+func (f *Data) readUint64() (u uint64) {
+	if f.position >= len(f.payload) {
 		return
 	}
-	u = binary.BigEndian.Uint64(f.Payload[f.position : f.position+8])
+	u = binary.BigEndian.Uint64(f.payload[f.position : f.position+8])
 	f.position += 8
 	return
 }
 
-func (f *Frame) readUint32() (u uint32) {
-	if f.position >= len(f.Payload) {
+func (f *Data) readUint32() (u uint32) {
+	if f.position >= len(f.payload) {
 		return
 	}
-	u = binary.BigEndian.Uint32(f.Payload[f.position : f.position+4])
+	u = binary.BigEndian.Uint32(f.payload[f.position : f.position+4])
 	f.position += 4
 	return
 }
 
-func (f *Frame) readUint16() (u uint16) {
-	if f.position >= len(f.Payload) {
+func (f *Data) readUint16() (u uint16) {
+	if f.position >= len(f.payload) {
 		return
 	}
-	u = binary.BigEndian.Uint16(f.Payload[f.position : f.position+2])
+	u = binary.BigEndian.Uint16(f.payload[f.position : f.position+2])
 	f.position += 2
 	return
 }
 
-func (f *Frame) readUint6() (u uint8) {
-	if f.position >= len(f.Payload) {
+func (f *Data) readUint6() (u uint8) {
+	if f.position >= len(f.payload) {
 		return
 	}
-	u = f.Payload[f.position]
+	u = f.payload[f.position]
 	f.position += 1
 	return
 }
 
-func (f *Frame) readLength(length int) (raw []byte) {
-	if f.position+length > len(f.Payload) {
+func (f *Data) readLength(length int) (raw []byte) {
+	if f.position+length > len(f.payload) {
 		return []byte{}
 	}
-	raw = f.Payload[f.position : f.position+length]
+	raw = f.payload[f.position : f.position+length]
 	f.position += length
 	return raw
 }

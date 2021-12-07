@@ -7,13 +7,14 @@
 package helper
 
 import (
+	"github.com/blusewang/pg/dsn"
 	"log"
 	"testing"
 	"time"
 )
 
 func TestParseDSNUseURI(t *testing.T) {
-	dsn, err := ParseDSN("pg://cashier:@:33521/cashier?host=/tmp&application_name=cashier_production&strict=true")
+	dsn, err := dsn.ParseDSN("pg://cashier:@:33521/cashier?host=/tmp&application_name=cashier_production&strict=true")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,13 +22,13 @@ func TestParseDSNUseURI(t *testing.T) {
 }
 
 func TestParseDSNUseURIHasSock(t *testing.T) {
-	name := DataSourceName{
+	name := dsn.DataSourceName{
 		Host:           "/tmp",
 		Port:           "5432",
 		Password:       "pass.word",
 		ConnectTimeout: time.Duration(10) * time.Second,
 	}
-	dsn, err := ParseDSN("pg://postgres:pass.word@:5432/db_name?application_name=application_name&Host=/tmp&connect_timeout=10")
+	dsn, err := dsn.ParseDSN("pg://postgres:pass.word@:5432/db_name?application_name=application_name&Host=/tmp&connect_timeout=10")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,13 +39,13 @@ func TestParseDSNUseURIHasSock(t *testing.T) {
 }
 
 func TestParseDSNUseStr(t *testing.T) {
-	name := DataSourceName{
+	name := dsn.DataSourceName{
 		Host:           "postgresql.com",
 		Port:           "5432",
 		Password:       "pass.word",
 		ConnectTimeout: time.Duration(10) * time.Second,
 	}
-	dsn, err := ParseDSN("user=postgres Password=pass.word Host=postgresql.com Port=5432 dbname=db_name application_name=application_name connect_timeout=10")
+	dsn, err := dsn.ParseDSN("user=postgres Password=pass.word Host=postgresql.com Port=5432 dbname=db_name application_name=application_name connect_timeout=10")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,13 +55,13 @@ func TestParseDSNUseStr(t *testing.T) {
 }
 
 func TestParseDSNUseStrHasSock(t *testing.T) {
-	name := DataSourceName{
+	name := dsn.DataSourceName{
 		Host:           "/tmp",
 		Port:           "5432",
 		Password:       "pass.word",
 		ConnectTimeout: time.Duration(10) * time.Second,
 	}
-	dsn, err := ParseDSN("user=postgres Password=pass.word Host=/tmp Port=5432 dbname=db_name application_name=application_name connect_timeout=10")
+	dsn, err := dsn.ParseDSN("user=postgres Password=pass.word Host=/tmp Port=5432 dbname=db_name application_name=application_name connect_timeout=10")
 	if err != nil {
 		t.Fatal(err)
 	}

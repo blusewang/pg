@@ -16,22 +16,22 @@ import (
 // readerLoop 开启实时读取
 // 实时处理异步数据
 func (c *Client) readerLoop() {
-	var out interface{}
+	var out frame.Frame
 	var err error
 	for {
 		out, err = c.reader.Decode()
 		if err != nil {
+			log.Println(err)
 			// 因为收到致命错误会立即退出此循环
 			// 所以这里只会在网络断开或解码出错时触发
-			_ = c.Terminate()
+			close(c.frameChan)
+			close(c.NotifyChan)
 			return
 		}
 		switch f := out.(type) {
 		case *frame.Notification:
 			f.Decode()
-			if ListenMap[f.Condition] != nil {
-				ListenMap[f.Condition](f.Text)
-			}
+			c.NotifyChan <- f
 		case *frame.NoticeResponse:
 			f.Decode()
 			raw, _ := json.Marshal(f.Error.Error)
@@ -45,11 +45,12 @@ func (c *Client) readerLoop() {
 			c.frameChan <- f
 			if f.Error.Fail == "FATAL" || f.Error.Fail == "PANIC" {
 				// 这两种错误需立即断开连接
-				_ = c.Terminate()
+				close(c.frameChan)
+				close(c.NotifyChan)
 				return
 			}
 		case *frame.ReadyForQuery:
-			c.status = frame.TransactionStatus(f.Payload[0])
+			c.status = frame.TransactionStatus(f.Payload()[0])
 			c.frameChan <- f
 		default:
 			c.frameChan <- f
@@ -57,7 +58,7 @@ func (c *Client) readerLoop() {
 	}
 }
 
-func (c *Client) getFrames() (list []interface{}, err error) {
+func (c *Client) getFrames() (list []frame.Frame, err error) {
 	for {
 		out, isOpen := <-c.frameChan
 		if !isOpen {

@@ -9,7 +9,7 @@ package frame
 import "math"
 
 type DataRow struct {
-	*Frame
+	*Data
 	Count   uint16
 	DataArr [][]byte
 }

@@ -7,7 +7,7 @@
 package frame
 
 type ParameterDescription struct {
-	*Frame
+	*Data
 	Count    uint16
 	TypeOIDs []uint32
 }

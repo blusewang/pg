@@ -7,23 +7,23 @@
 package pg
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/client"
+	"github.com/blusewang/pg/dsn"
 )
 
+const DriverName = "pg"
+
 func init() {
-	sql.Register("pg", &Driver{})
+	sql.Register(DriverName, &Driver{})
 }
 
 func NewConnector(dataSourceName string) driver.Connector {
 	return &Connector{Name: dataSourceName}
 }
 
-func Listen(channel string, handler func(string)) {
-	client.ListenMap[channel] = handler
-}
-
-func UnListen(channel string) {
-	delete(client.ListenMap, channel)
+func New(ctx context.Context, dsn dsn.DataSourceName) (*client.Client, error) {
+	return client.NewClient(ctx, dsn)
 }

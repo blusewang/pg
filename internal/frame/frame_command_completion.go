@@ -12,14 +12,14 @@ import (
 )
 
 type CommandCompletion struct {
-	*Frame
+	*Data
 }
 
 func (cc *CommandCompletion) Affected() (n int) {
 	if cc == nil {
 		return
 	}
-	arr := strings.Split(string(cc.Payload), " ")
+	arr := strings.Split(string(cc.payload), " ")
 	if len(arr) == 2 {
 		n, _ = strconv.Atoi(arr[1])
 	}

@@ -14,10 +14,10 @@ import (
 	"time"
 )
 
-func NewBind(stat string, args []driver.Value) *Frame {
-	b := &Frame{
+func NewBind(stat string, args []driver.Value) *Data {
+	b := &Data{
 		Name:    'B',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	// Portal
 	b.writeString("")

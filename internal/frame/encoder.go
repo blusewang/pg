@@ -22,23 +22,23 @@ func NewEncoder(c net.Conn) *Encoder {
 	return &Encoder{c, bytes.Buffer{}}
 }
 
-func (e *Encoder) Fire(f *Frame) (err error) {
+func (e *Encoder) Fire(f *Data) (err error) {
 	raw := make([]byte, 4)
-	binary.BigEndian.PutUint32(raw, uint32(len(f.Payload))+4)
+	binary.BigEndian.PutUint32(raw, uint32(len(f.payload))+4)
 	if f.Name > 0 {
 		raw = append([]byte{f.Name}, raw...)
 	}
-	_, err = e.w.Write(append(raw, f.Payload...))
+	_, err = e.w.Write(append(raw, f.payload...))
 	return
 }
 
-func (e *Encoder) Encode(f *Frame) (err error) {
+func (e *Encoder) Encode(f *Data) (err error) {
 	raw := make([]byte, 4)
-	binary.BigEndian.PutUint32(raw, uint32(len(f.Payload))+4)
+	binary.BigEndian.PutUint32(raw, uint32(len(f.payload))+4)
 	if f.Name > 0 {
 		raw = append([]byte{f.Name}, raw...)
 	}
-	_, err = e.buf.Write(append(raw, f.Payload...))
+	_, err = e.buf.Write(append(raw, f.payload...))
 	return
 }
 

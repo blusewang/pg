@@ -6,12 +6,12 @@
 
 package frame
 
-type SSLRequest Frame
+type SSLRequest Data
 
-func NewSSLRequest() *Frame {
-	f := &Frame{
+func NewSSLRequest() *Data {
+	f := &Data{
 		Name:    0,
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	// hard code
 	// uint32 = 80877103
@@ -20,35 +20,35 @@ func NewSSLRequest() *Frame {
 	return f
 }
 
-func NewTermination() *Frame {
-	return &Frame{
+func NewTermination() *Data {
+	return &Data{
 		Name:    'X',
 		length:  4,
-		Payload: []byte{},
+		payload: []byte{},
 	}
 }
 
-func NewDescribe(stat string) *Frame {
-	var d = &Frame{
+func NewDescribe(stat string) *Data {
+	var d = &Data{
 		Name:    'D',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	d.writeString("S" + stat)
 	return d
 }
 
-func NewSync() *Frame {
-	return &Frame{
+func NewSync() *Data {
+	return &Data{
 		Name:    'S',
 		length:  4,
-		Payload: []byte{},
+		payload: []byte{},
 	}
 }
 
-func NewParse(sid, query string) *Frame {
-	p := &Frame{
+func NewParse(sid, query string) *Data {
+	p := &Data{
 		Name:    'P',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	p.writeString(sid)
 	p.writeString(query)
@@ -56,10 +56,10 @@ func NewParse(sid, query string) *Frame {
 	return p
 }
 
-func NewExecute() *Frame {
-	e := &Frame{
+func NewExecute() *Data {
+	e := &Data{
 		Name:    'E',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	// Portal
 	e.writeString("")
@@ -68,19 +68,19 @@ func NewExecute() *Frame {
 	return e
 }
 
-func NewSimpleQuery(stat string) *Frame {
-	e := &Frame{
+func NewSimpleQuery(stat string) *Data {
+	e := &Data{
 		Name:    'Q',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	e.writeString(stat)
 	return e
 }
 
-func NewCancelRequest(pid, key uint32) *Frame {
-	c := &Frame{
+func NewCancelRequest(pid, key uint32) *Data {
+	c := &Data{
 		Name:    'F',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	// hard code
 	// uint32 = 80877102
@@ -91,43 +91,43 @@ func NewCancelRequest(pid, key uint32) *Frame {
 	return c
 }
 
-func NewCloseStat(stat string) *Frame {
-	c := &Frame{
+func NewCloseStat(stat string) *Data {
+	c := &Data{
 		Name:    'C',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 	c.WriteUint8('S')
 	c.writeString(stat)
 	return c
 }
 
-func NewFlush() *Frame {
-	return &Frame{
+func NewFlush() *Data {
+	return &Data{
 		Name:    'H',
-		Payload: []byte{},
+		payload: []byte{},
 	}
 }
 
 type NoData struct {
-	*Frame
+	*Data
 }
 
 type EmptyQueryResponse struct {
-	*Frame
+	*Data
 }
 
 type CloseComplete struct {
-	*Frame
+	*Data
 }
 
 type ReadyForQuery struct {
-	*Frame
+	*Data
 }
 
 type ParseCompletion struct {
-	*Frame
+	*Data
 }
 
 type BindCompletion struct {
-	*Frame
+	*Data
 }

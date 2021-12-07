@@ -173,17 +173,17 @@ func (c *Client) CancelRequest() (err error) {
 }
 
 func (c *Client) Terminate() (err error) {
-	if c.IOError == nil {
-		_ = c.writer.Fire(frame.NewTermination())
-		close(c.frameChan)
-	}
-	c.parameterMaps = nil
-	c.StatementMaps = nil
-	c.status = frame.TransactionStatusNoReady
+	_ = c.writer.Fire(frame.NewTermination())
 	c.IOError = io.EOF
 	return c.conn.Close()
 }
 
 func (c *Client) IsInTransaction() bool {
 	return c.status == frame.TransactionStatusIdleInTransaction || c.status == frame.TransactionStatusInFailedTransaction
+}
+
+func (c *Client) Close() (err error) {
+	c.parameterMaps = nil
+	c.StatementMaps = nil
+	return
 }

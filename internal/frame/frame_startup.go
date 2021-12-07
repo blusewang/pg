@@ -7,14 +7,14 @@
 package frame
 
 type Startup struct {
-	*Frame
+	*Data
 }
 
 func NewStartup() *Startup {
-	sf := &Startup{&Frame{
+	sf := &Startup{&Data{
 		Name:    0,
 		length:  0,
-		Payload: []byte{}},
+		payload: []byte{}},
 	}
 	// v3.0
 	sf.writeUint16(3)

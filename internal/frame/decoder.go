@@ -21,59 +21,59 @@ func NewDecoder(c net.Conn) *Decoder {
 	return &Decoder{bufio.NewReader(c)}
 }
 
-func (d *Decoder) Decode() (out interface{}, err error) {
-	f := new(Frame)
+func (d *Decoder) Decode() (out Frame, err error) {
+	f := new(Data)
 	f.Name, err = d.r.ReadByte()
 	if err != nil {
 		return
 	}
-	f.Payload, err = d.r.Peek(4)
+	f.payload, err = d.r.Peek(4)
 	if err != nil {
 		return
 	}
-	f.length = binary.BigEndian.Uint32(f.Payload)
-	f.Payload = make([]byte, f.length, f.length)
-	_, err = io.ReadFull(d.r, f.Payload)
+	f.length = binary.BigEndian.Uint32(f.payload)
+	f.payload = make([]byte, f.length, f.length)
+	_, err = io.ReadFull(d.r, f.payload)
 	if err != nil {
 		return
 	}
-	f.Payload = f.Payload[4:]
+	f.payload = f.payload[4:]
 	out = detect(f)
 	return
 }
 
-func detect(f *Frame) (af interface{}) {
+func detect(f *Data) (af Frame) {
 	switch f.Name {
 	case 'R':
-		af = &AuthRequest{Frame: f}
+		af = &AuthRequest{Data: f}
 	case 'S':
-		af = &ParameterStatus{Frame: f}
+		af = &ParameterStatus{Data: f}
 	case 'K':
-		af = &BackendKeyData{Frame: f}
+		af = &BackendKeyData{Data: f}
 	case 'Z':
-		af = &ReadyForQuery{Frame: f}
+		af = &ReadyForQuery{Data: f}
 	case '1':
-		af = &ParseCompletion{Frame: f}
+		af = &ParseCompletion{Data: f}
 	case 't':
-		af = &ParameterDescription{Frame: f}
+		af = &ParameterDescription{Data: f}
 	case 'T':
-		af = &RowDescription{Frame: f}
+		af = &RowDescription{Data: f}
 	case 'D':
-		af = &DataRow{Frame: f}
+		af = &DataRow{Data: f}
 	case 'C':
-		af = &CommandCompletion{Frame: f}
+		af = &CommandCompletion{Data: f}
 	case 'E':
-		af = &Error{Frame: f}
+		af = &Error{Data: f}
 	case 'A':
-		af = &Notification{Frame: f}
+		af = &Notification{Data: f}
 	case '3':
-		af = &CloseComplete{Frame: f}
+		af = &CloseComplete{Data: f}
 	case 'I':
-		af = &CloseComplete{Frame: f}
+		af = &CloseComplete{Data: f}
 	case 'n':
-		af = &NoData{Frame: f}
+		af = &NoData{Data: f}
 	case 'N':
-		af = &NoticeResponse{Error{Frame: f}}
+		af = &NoticeResponse{Error{Data: f}}
 	default:
 		af = f
 	}

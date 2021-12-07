@@ -7,7 +7,7 @@
 package frame
 
 type Notification struct {
-	*Frame
+	*Data
 	Pid       uint32
 	Condition string
 	Text      string

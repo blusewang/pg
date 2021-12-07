@@ -11,7 +11,7 @@ import (
 )
 
 type AuthRequest struct {
-	*Frame
+	*Data
 }
 
 const (
@@ -21,9 +21,9 @@ const (
 )
 
 func (ar *AuthRequest) GetType() uint32 {
-	return binary.BigEndian.Uint32(ar.Payload[0:4])
+	return binary.BigEndian.Uint32(ar.payload[0:4])
 }
 
 func (ar *AuthRequest) GetMd5Salt() []byte {
-	return ar.Payload[4:]
+	return ar.payload[4:]
 }

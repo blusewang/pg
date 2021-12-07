@@ -121,7 +121,7 @@ func (c *Client) startup() (err error) {
 	}
 	// 最后多补个空，表示结束
 	su.WriteUint8(0)
-	if err = c.writer.Fire(su.Frame); err != nil {
+	if err = c.writer.Fire(su.Data); err != nil {
 		return
 	}
 	var out interface{}
@@ -136,13 +136,13 @@ func (c *Client) startup() (err error) {
 			case frame.AuthTypePwd:
 				ar := frame.NewAuthResponse()
 				ar.Password(c.dsn.Password)
-				if err = c.writer.Fire(ar.Frame); err != nil {
+				if err = c.writer.Fire(ar.Data); err != nil {
 					return
 				}
 			case frame.AuthTypeMd5:
 				ar := frame.NewAuthResponse()
 				ar.Md5Pwd(c.dsn.Parameter["user"], c.dsn.Password, string(f.GetMd5Salt()))
-				if err = c.writer.Fire(ar.Frame); err != nil {
+				if err = c.writer.Fire(ar.Data); err != nil {
 					return
 				}
 			case frame.AuthTypeOk:
@@ -161,7 +161,7 @@ func (c *Client) startup() (err error) {
 			c.backendPid = f.Pid
 			c.backendKey = f.Key
 		case *frame.ReadyForQuery:
-			c.status = frame.TransactionStatus(f.Payload[0])
+			c.status = frame.TransactionStatus(f.Payload()[0])
 			go c.readerLoop()
 			return nil
 		}

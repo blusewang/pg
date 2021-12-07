@@ -32,12 +32,12 @@ func (e errorStruct) Error() string {
 }
 
 type Error struct {
-	*Frame
+	*Data
 	Error errorStruct
 }
 
 func (e *Error) Decode() {
-	for e.position < len(e.Payload)-1 {
+	for e.position < len(e.payload)-1 {
 		s := e.readString()
 		switch s[0] {
 		case 'S':

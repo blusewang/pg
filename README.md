@@ -24,9 +24,10 @@
 	go get github.com/blusewang/pg
 
 ## 使用
+### 通用查询
 ```golang
 
-	db, err := sql.Open("pg", "pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
+	db, err := sql.Open(pg.DriverName, "pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
 	if err != nil {
 		return err
 	}
@@ -39,6 +40,31 @@
 
 ```
 
+### 异步订阅
+```golang
+	md, err := dsn.ParseDSN("pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
+	if err != nil {
+		return
+	}
+	c, err := pg.New(context.Background(), md)
+	if err != nil {
+		return
+	}
+	_, err = c.QueryNoArgs("listen abc")
+	if err != nil {
+        _ = c.Terminate()
+		return
+	}
+	for {
+		n, ok := <-c.NotifyChan
+		if !ok {
+			log.Println(c.IOError)
+			return
+		}
+		log.Println(n.Condition, n.Text)
+	}
+```
+
 ## 文档
 
 更多的细节及使用示例，参见： <https://pkg.go.dev/github.com/blusewang/pg>.
@@ -48,7 +74,7 @@
 * Scan() 时允许传入指针，完美对应数据库中的`null`
 * 所有查询全部自动`prepare`并缓存。
 * 支持`pg://`前缀的URI
-* 支持`Listen`式的异步消息订阅 
+* 支持`Listen`式的异步消息订阅
 
 ### 配置要求
 * 配置上需将`sql.SetMaxIdleConns(x)`、`sql.SetMaxOpenConns(x)`两处的x设置为相同的值，才能让缓存实现价值。

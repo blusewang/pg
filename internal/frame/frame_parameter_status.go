@@ -7,7 +7,7 @@
 package frame
 
 type ParameterStatus struct {
-	*Frame
+	*Data
 	Name  string
 	Value string
 }

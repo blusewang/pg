@@ -11,7 +11,7 @@ import (
 	"crypto/md5"
 	"database/sql/driver"
 	"fmt"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/client"
 )
 
 type PgStmt struct {

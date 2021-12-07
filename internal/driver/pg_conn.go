@@ -12,8 +12,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/blusewang/pg/internal/client"
-	"github.com/blusewang/pg/internal/helper"
+	"github.com/blusewang/pg/client"
+	"github.com/blusewang/pg/dsn"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,17 +21,17 @@ import (
 )
 
 type PgConn struct {
-	dsn    *helper.DataSourceName
+	dsn    dsn.DataSourceName
 	client *client.Client
 }
 
 func NewPgConn(name string) (c PgConn, err error) {
-	c.dsn, err = helper.ParseDSN(name)
+	c.dsn, err = dsn.ParseDSN(name)
 	if err != nil {
 		return
 	}
 
-	c.client, err = client.NewClient(context.Background(), *c.dsn)
+	c.client, err = client.NewClient(context.Background(), c.dsn)
 	if err != nil {
 		return
 	}
@@ -40,12 +40,12 @@ func NewPgConn(name string) (c PgConn, err error) {
 
 func NewPgConnContext(ctx context.Context, name string) (c *PgConn, err error) {
 	c = new(PgConn)
-	c.dsn, err = helper.ParseDSN(name)
+	c.dsn, err = dsn.ParseDSN(name)
 	if err != nil {
 		return
 	}
 
-	c.client, err = client.NewClient(ctx, *c.dsn)
+	c.client, err = client.NewClient(ctx, c.dsn)
 	if err != nil {
 		return
 	}
@@ -274,5 +274,8 @@ func (c PgConn) cancel() {
 
 func (c PgConn) Close() (err error) {
 	err = c.client.Terminate()
-	return
+	if err != nil {
+		return
+	}
+	return c.client.Close()
 }

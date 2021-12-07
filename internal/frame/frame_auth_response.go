@@ -12,14 +12,14 @@ import (
 )
 
 type AuthResponse struct {
-	*Frame
+	*Data
 }
 
 func NewAuthResponse() *AuthResponse {
-	return &AuthResponse{&Frame{
+	return &AuthResponse{&Data{
 		Name:    'p',
 		length:  0,
-		Payload: []byte{},
+		payload: []byte{},
 	}}
 }
 

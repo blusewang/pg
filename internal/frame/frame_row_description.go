@@ -16,7 +16,7 @@ type Column struct {
 	Format       uint16
 }
 type RowDescription struct {
-	*Frame
+	*Data
 	Count   uint16
 	Columns []Column
 }
