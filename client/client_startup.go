@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/blusewang/pg/internal/frame"
+	"github.com/xdg-go/scram"
 	"io/ioutil"
 	"log"
 	"net"
@@ -131,6 +132,10 @@ func (c *Client) startup() (err error) {
 			return
 		}
 		switch f := out.(type) {
+		case *frame.Error:
+			f.Decode()
+			log.Println(f.Error)
+			return errors.New(f.Error.Error())
 		case *frame.AuthRequest:
 			switch f.GetType() {
 			case frame.AuthTypePwd:
@@ -144,6 +149,33 @@ func (c *Client) startup() (err error) {
 				ar.Md5Pwd(c.dsn.Parameter["user"], c.dsn.Password, string(f.GetMd5Salt()))
 				if err = c.writer.Fire(ar.Data); err != nil {
 					return
+				}
+			case frame.AuthTypeSASL:
+				log.Println(c.dsn.Password)
+				cli, err := scram.SHA256.NewClient("", c.dsn.Password, "")
+				if err != nil {
+					return err
+				}
+				c.saslConversation = cli.NewConversation()
+				resp, err := c.saslConversation.Step("")
+				if err != nil {
+					return err
+				}
+				ar := frame.NewAuthSASLInitialResponse()
+				ar.Mechanism(f.GetSASLAuthMechanism())
+				ar.AuthResponse(resp)
+				if err = c.writer.Fire(ar.Data); err != nil {
+					return err
+				}
+			case frame.AuthTypeSASLContinue:
+				resp, err := c.saslConversation.Step(string(f.GetSASLAuthData()))
+				if err != nil {
+					return err
+				}
+				ar := frame.NewAuthSASLResponse()
+				ar.AuthResponse([]byte(resp))
+				if err = c.writer.Fire(ar.Data); err != nil {
+					return err
 				}
 			case frame.AuthTypeOk:
 			}

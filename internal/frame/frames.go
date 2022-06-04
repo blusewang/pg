@@ -131,3 +131,15 @@ type ParseCompletion struct {
 type BindCompletion struct {
 	*Data
 }
+
+type CopyData struct {
+	*Data
+}
+
+type CopyCompletion struct {
+	*Data
+}
+
+type CopyFail struct {
+	*Data
+}
