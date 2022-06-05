@@ -151,7 +151,10 @@ func (c *Client) startup() (err error) {
 					return
 				}
 			case frame.AuthTypeSASL:
-				log.Println(c.dsn.Password)
+				am := f.GetSASLAuthMechanism()
+				if am != frame.AuthSASLSCRAMSHA256 && am != frame.AuthSASLSCRAMSHA256PLUS {
+					return errors.New("不支持的SASL认证")
+				}
 				cli, err := scram.SHA256.NewClient("", c.dsn.Password, "")
 				if err != nil {
 					return err
@@ -162,7 +165,7 @@ func (c *Client) startup() (err error) {
 					return err
 				}
 				ar := frame.NewAuthSASLInitialResponse()
-				ar.Mechanism(f.GetSASLAuthMechanism())
+				ar.Mechanism(frame.AuthSASLSCRAMSHA256)
 				ar.AuthResponse(resp)
 				if err = c.writer.Fire(ar.Data); err != nil {
 					return err

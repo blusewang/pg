@@ -8,6 +8,7 @@ package client
 
 import (
 	"context"
+	"database/sql/driver"
 	"github.com/blusewang/pg/dsn"
 	"log"
 	"testing"
@@ -15,7 +16,7 @@ import (
 
 func TestClient(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lshortfile)
-	d, err := dsn.ParseDSN("pg://postgres:abc123@r:5433/core?sslmode=disable")
+	d, err := dsn.ParseDSN("pg://developer:dev.123@r/core")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +24,12 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := c.QueryNoArgs("select now()")
+	s, err := c.Parse("abc", "select * from pg_settings where name=$1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Println(s)
+	res, err := c.ParseExec("abc", []driver.Value{"allow_system_table_mods"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,8 +6,6 @@
 
 package frame
 
-import "log"
-
 type AuthSASLInitialResponse struct {
 	*Data
 }
@@ -25,7 +23,6 @@ func (ar *AuthSASLInitialResponse) Mechanism(str string) {
 }
 
 func (ar *AuthSASLInitialResponse) AuthResponse(str string) {
-	log.Println(uint8(len([]byte(str))), str)
 	ar.writeUint32(uint32(len([]byte(str))))
 	ar.writeBytes([]byte(str))
 }

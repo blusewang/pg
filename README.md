@@ -99,6 +99,11 @@ log.Println(n.Condition, n.Text)
 | <ul><li>- [x] </li></ul> | SSL会话加密   | 远程安全                          |
 | <ul><li>- [x] </li></ul> | 异步        | listen/notify                 |
 
+暂不支持`SCRAM-SHA-256-PLUS`。当`pg_hba.conf`使用：
+```conf
+hostssl all             all             0.0.0.0/0               scram-sha-256 clientcert=verify-full
+```
+时，Server会发类型为`SCRAM-SHA-256-PLUS`类型的请求。此时客户端将自动降级至`SCRAM-SHA-256`。
 ## License
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fblusewang%2Fpg.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fblusewang%2Fpg?ref=badge_large)

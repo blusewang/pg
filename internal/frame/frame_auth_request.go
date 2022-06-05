@@ -11,12 +11,13 @@ type AuthRequest struct {
 }
 
 const (
-	AuthTypeOk           uint32 = 0
-	AuthTypePwd          uint32 = 3
-	AuthTypeMd5          uint32 = 5
-	AuthTypeSASL         uint32 = 10
-	AuthTypeSASLContinue uint32 = 11
-	AuthSASLSCRAMSHA256  string = "SCRAM-SHA-256"
+	AuthTypeOk              uint32 = 0
+	AuthTypePwd             uint32 = 3
+	AuthTypeMd5             uint32 = 5
+	AuthTypeSASL            uint32 = 10
+	AuthTypeSASLContinue    uint32 = 11
+	AuthSASLSCRAMSHA256     string = "SCRAM-SHA-256"
+	AuthSASLSCRAMSHA256PLUS string = "SCRAM-SHA-256-PLUS"
 )
 
 func (ar *AuthRequest) GetType() uint32 {
