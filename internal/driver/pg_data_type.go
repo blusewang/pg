@@ -42,7 +42,10 @@ func convert(raw []byte, col frame.Column, location *time.Location) driver.Value
 	case PgTypeTimestamptz:
 		return parseTs(location, string(raw))
 	case PgTypeTimestamp, PgTypeDate:
-		return parseTs(nil, string(raw))
+		d := parseTs(nil, string(raw))
+		l, _ := time.LoadLocation("Asia/Shanghai")
+		d = d.(time.Time).In(l).Add(-8 * time.Hour)
+		return d
 	case PgTypeTime:
 		return mustParse("15:04:05", PgTypeTime, raw)
 	case PgTypeTimetz:
@@ -55,7 +58,15 @@ func convert(raw []byte, col frame.Column, location *time.Location) driver.Value
 		return f
 	case PgTypeJson, PgTypeJsonb, PgTypeUuid, PgTypePoint:
 		return string(raw)
-	case PgTypeArrInt4:
+	case PgTypeArrBool:
+		raw = bytes.ReplaceAll(raw, []byte("{"), []byte("["))
+		raw = bytes.ReplaceAll(raw, []byte("}"), []byte("]"))
+		raw = bytes.ReplaceAll(raw, []byte("t"), []byte("true"))
+		raw = bytes.ReplaceAll(raw, []byte("f"), []byte("false"))
+		var arr []int64
+		_ = json.Unmarshal(raw, &arr)
+		return arr
+	case PgTypeArrInt4, PgTypeArrInt8:
 		var str = string(raw)
 		var arr []int64
 		if strings.HasPrefix(str, "{") && len(str) > 2 {
@@ -235,19 +246,19 @@ func parseTs(currentLocation *time.Location, str string) interface{} {
 // ParseTimestamp parses Postgres' text format. It returns a time.Time in
 // currentLocation iff that time's offset agrees with the offset sent from the
 // Postgres server. Otherwise, ParseTimestamp returns a time.Time with the
-// fixed offset offset provided by the Postgres server.
+// fixed offset provided by the Postgres server.
 func ParseTimestamp(currentLocation *time.Location, str string) (time.Time, error) {
 	p := timestampParser{}
 
 	monSep := strings.IndexRune(str, '-')
 	// this is Gregorian year, not ISO Year
 	// In Gregorian system, the year 1 BC is followed by AD 1
-	year := p.mustAtoi(str, 0, monSep)
+	year := p.mustAti(str, 0, monSep)
 	daySep := monSep + 3
-	month := p.mustAtoi(str, monSep+1, daySep)
+	month := p.mustAti(str, monSep+1, daySep)
 	p.expect(str, '-', daySep)
 	timeSep := daySep + 3
-	day := p.mustAtoi(str, daySep+1, timeSep)
+	day := p.mustAti(str, daySep+1, timeSep)
 
 	minLen := monSep + len("01-01") + 1
 
@@ -261,12 +272,12 @@ func ParseTimestamp(currentLocation *time.Location, str string) (time.Time, erro
 		p.expect(str, ' ', timeSep)
 		minSep := timeSep + 3
 		p.expect(str, ':', minSep)
-		hour = p.mustAtoi(str, timeSep+1, minSep)
+		hour = p.mustAti(str, timeSep+1, minSep)
 		secSep := minSep + 3
 		p.expect(str, ':', secSep)
-		minute = p.mustAtoi(str, minSep+1, secSep)
+		minute = p.mustAti(str, minSep+1, secSep)
 		secEnd := secSep + 3
-		second = p.mustAtoi(str, secSep+1, secEnd)
+		second = p.mustAti(str, secSep+1, secEnd)
 	}
 	remainderIdx := monSep + len("01-01 00:00:00") + 1
 	// Three optional (but ordered) sections follow: the
@@ -283,7 +294,7 @@ func ParseTimestamp(currentLocation *time.Location, str string) (time.Time, erro
 		if fracOff < 0 {
 			fracOff = len(str) - fracStart
 		}
-		fracSec := p.mustAtoi(str, fracStart, fracStart+fracOff)
+		fracSec := p.mustAti(str, fracStart, fracStart+fracOff)
 		nanoSec = fracSec * (1000000000 / int(math.Pow(10, float64(fracOff))))
 
 		remainderIdx += fracOff + 1
@@ -299,15 +310,15 @@ func ParseTimestamp(currentLocation *time.Location, str string) (time.Time, erro
 		default:
 			return time.Time{}, fmt.Errorf("expected '-' or '+' at position %v; got %v", tzStart, c)
 		}
-		tzHours := p.mustAtoi(str, tzStart+1, tzStart+3)
+		tzHours := p.mustAti(str, tzStart+1, tzStart+3)
 		remainderIdx += 3
 		var tzMin, tzSec int
 		if remainderIdx < len(str) && str[remainderIdx] == ':' {
-			tzMin = p.mustAtoi(str, remainderIdx+1, remainderIdx+3)
+			tzMin = p.mustAti(str, remainderIdx+1, remainderIdx+3)
 			remainderIdx += 3
 		}
 		if remainderIdx < len(str) && str[remainderIdx] == ':' {
-			tzSec = p.mustAtoi(str, remainderIdx+1, remainderIdx+3)
+			tzSec = p.mustAti(str, remainderIdx+1, remainderIdx+3)
 			remainderIdx += 3
 		}
 		tzOff = tzSign * ((tzHours * 60 * 60) + (tzMin * 60) + tzSec)
@@ -358,7 +369,7 @@ func (p *timestampParser) expect(str string, char byte, pos int) {
 	}
 }
 
-func (p *timestampParser) mustAtoi(str string, begin int, end int) int {
+func (p *timestampParser) mustAti(str string, begin int, end int) int {
 	if p.err != nil {
 		return 0
 	}
@@ -376,7 +387,7 @@ func (p *timestampParser) mustAtoi(str string, begin int, end int) int {
 	return result
 }
 
-// The location cache caches the time zones typically used by the client.
+// The locationCache caches the time zones typically used by the client.
 type locationCache struct {
 	cache map[int]*time.Location
 	lock  sync.Mutex
