@@ -23,7 +23,7 @@
 
 ## 安装
 
-	go get github.com/blusewang/pg
+	go get github.com/blusewang/pg/v2
 
 ## 使用
 
@@ -71,7 +71,7 @@ log.Println(pid, channel, message)
 
 ## 文档
 
-更多的细节及使用示例，参见： <https://pkg.go.dev/github.com/blusewang/pg>.
+更多的细节及使用示例，参见： <https://pkg.go.dev/github.com/blusewang/pg/v2>.
 
 ## 特性
 
