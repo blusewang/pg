@@ -2,7 +2,7 @@ package pg
 
 import (
 	"context"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/v2/internal/client"
 )
 
 type Listener interface {
