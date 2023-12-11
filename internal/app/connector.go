@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"database/sql/driver"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/v2/internal/client"
 )
 
 type Connector struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/v2/internal/client"
 )
 
 type Tx struct {

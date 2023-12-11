@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/v2/internal/client"
 	"go/types"
 	"strconv"
 	"time"

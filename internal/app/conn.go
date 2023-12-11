@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/blusewang/pg/internal/client"
+	"github.com/blusewang/pg/v2/internal/client"
 	"reflect"
 	"strconv"
 	"strings"

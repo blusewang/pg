@@ -6,7 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"github.com/blusewang/pg/internal/client/frame"
+	"github.com/blusewang/pg/v2/internal/client/frame"
 	"io"
 	"reflect"
 	"strconv"

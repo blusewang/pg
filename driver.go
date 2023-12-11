@@ -1,8 +1,8 @@
 package pg
 
 import (
-	"github.com/blusewang/pg/internal/app"
-	"github.com/blusewang/pg/internal/client/frame"
+	"github.com/blusewang/pg/v2/internal/app"
+	"github.com/blusewang/pg/v2/internal/client/frame"
 )
 
 type Error struct {
