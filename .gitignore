@@ -13,4 +13,4 @@
 
 ./idea
 .idea
-main_test.go
+client_test.go
