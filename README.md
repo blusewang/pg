@@ -8,9 +8,7 @@
 
 #### Go Version Support
 
-![Go version](https://img.shields.io/badge/Go-1.11x-brightgreen.svg)
-![Go version](https://img.shields.io/badge/Go-1.13x-brightgreen.svg)
-![Go version](https://img.shields.io/badge/Go-1.17x-brightgreen.svg)
+![Go version](https://img.shields.io/badge/Go-1.20x-brightgreen.svg)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fblusewang%2Fpg.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fblusewang%2Fpg?ref=badge_shield)
 
 #### PostgreSQL Version Support
@@ -20,6 +18,8 @@
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-12.0-brightgreen.svg)
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-13.0-brightgreen.svg)
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-14.0-brightgreen.svg)
+![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-15.0-brightgreen.svg)
+![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-16.0-brightgreen.svg)
 
 ## 安装
 
@@ -31,7 +31,8 @@
 
 ```golang
 
-db, err := sql.Open(pg.DriverName, "pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
+sql.Register("pq", pg.Driver{})
+db, err := sql.Open("pg", "pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
 if err != nil {
 return err
 }
@@ -47,26 +48,24 @@ return err
 ### 异步订阅
 
 ```golang
-    md, err := dsn.ParseDSN("pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
+    l, err := pg.NewListener("pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
 if err != nil {
 return
 }
-c, err := pg.New(context.Background(), md)
-if err != nil {
-return
-}
-_, err = c.QueryNoArgs("listen abc")
-if err != nil {
-_ = c.Terminate()
-return
-}
+
+t.Log(l.Listen("channel_name"))
+go func() {
+time.Sleep(time.Minute)
+_ = l.Terminate()
+}()
 for {
-n, ok := <-c.NotifyChan
-if !ok {
-log.Println(c.IOError)
-return
+pid, channel, message, err := l.GetNotification()
+if err == io.EOF {
+t.Fatal(err)
+} else if err != nil {
+t.Fatal(err)
 }
-log.Println(n.Condition, n.Text)
+log.Println(pid, channel, message)
 }
 ```
 
