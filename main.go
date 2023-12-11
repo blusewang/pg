@@ -12,11 +12,13 @@ import (
 	"database/sql/driver"
 	"github.com/blusewang/pg/client"
 	"github.com/blusewang/pg/dsn"
+	"log"
 )
 
 const DriverName = "pg"
 
 func init() {
+	log.Println("register driver")
 	sql.Register(DriverName, &Driver{})
 }
 

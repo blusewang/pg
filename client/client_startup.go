@@ -9,11 +9,13 @@ package client
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"github.com/blusewang/pg/internal/frame"
-	"github.com/xdg-go/scram"
+	scram2 "github.com/blusewang/pg/scram"
 	"io/ioutil"
 	"log"
 	"net"
@@ -36,6 +38,13 @@ func (c *Client) connect(ctx context.Context) (err error) {
 	}
 	c.writer = frame.NewEncoder(c.conn)
 	c.reader = frame.NewDecoder(c.conn)
+	c.Err = nil
+	c.IOError = nil
+	c.status = frame.TransactionStatusNoReady
+	c.parameterMaps = make(map[string]string)
+	c.StatementMaps = make(map[string]*Statement)
+	c.frameChan = make(chan frame.Frame)
+	c.NotifyChan = make(chan *frame.Notification)
 
 	return c.startup()
 }
@@ -155,18 +164,25 @@ func (c *Client) startup() (err error) {
 				if am != frame.AuthSASLSCRAMSHA256 && am != frame.AuthSASLSCRAMSHA256PLUS {
 					return errors.New("不支持的SASL认证")
 				}
-				cli, err := scram.SHA256.NewClient("", c.dsn.Password, "")
-				if err != nil {
-					return err
+				sc := scram2.NewClient(sha256.New, "", c.dsn.Password)
+				sc.Step(nil)
+				if sc.Err() != nil {
+					return errors.New(fmt.Sprintf("SCRAM-SHA-256 error: %s", sc.Err().Error()))
 				}
-				c.saslConversation = cli.NewConversation()
-				resp, err := c.saslConversation.Step("")
-				if err != nil {
-					return err
-				}
+
+				//cli, err := scram.SHA256.NewClient("", c.dsn.Password, "")
+				//if err != nil {
+				//	return err
+				//}
+				//c.saslConversation = cli.NewConversation()
+				//resp, err := c.saslConversation.Step("")
+				//if err != nil {
+				//	return err
+				//}
+
 				ar := frame.NewAuthSASLInitialResponse()
 				ar.Mechanism(frame.AuthSASLSCRAMSHA256)
-				ar.AuthResponse(resp)
+				ar.AuthResponse(string(sc.Out()))
 				if err = c.writer.Fire(ar.Data); err != nil {
 					return err
 				}

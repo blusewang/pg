@@ -9,6 +9,7 @@ package driver
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"github.com/blusewang/pg/internal/frame"
 	"io"
@@ -112,8 +113,10 @@ func (pr *PgRows) ColumnTypeScanType(index int) reflect.Type {
 		return reflect.TypeOf([]int64{})
 	case PgTypeArrFloat4, PgTypeArrFloat8, PgTypeArrNumeric:
 		return reflect.TypeOf([]float64{})
-	case PgTypeArrVarchar, PgTypeArrChar, PgTypeArrText, PgTypeArrUuid, PgTypeArrJson, PgTypeArrJsonb:
+	case PgTypeArrVarchar, PgTypeArrChar, PgTypeArrText, PgTypeArrUuid:
 		return reflect.TypeOf([]string{})
+	case PgTypeArrJson, PgTypeArrJsonb:
+		return reflect.TypeOf(json.RawMessage{})
 	case PgTypeArrBytea:
 		return reflect.TypeOf([][]byte{})
 

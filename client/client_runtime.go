@@ -7,10 +7,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/blusewang/pg/internal/frame"
 	"io"
 	"log"
+	"time"
 )
 
 // readerLoop 开启实时读取
@@ -21,11 +23,19 @@ func (c *Client) readerLoop() {
 	for {
 		out, err = c.reader.Decode()
 		if err != nil {
+			c.IOError = err
 			log.Println(err)
 			// 因为收到致命错误会立即退出此循环
 			// 所以这里只会在网络断开或解码出错时触发
-			close(c.frameChan)
-			close(c.NotifyChan)
+
+			if err == io.EOF {
+				//close(c.frameChan)
+				//close(c.NotifyChan)
+				go func() {
+					time.Sleep(time.Second * 2)
+					log.Println("reconnect", c.connect(context.Background()))
+				}()
+			}
 			return
 		}
 		switch f := out.(type) {
@@ -45,8 +55,13 @@ func (c *Client) readerLoop() {
 			c.frameChan <- f
 			if f.Error.Fail == "FATAL" || f.Error.Fail == "PANIC" {
 				// 这两种错误需立即断开连接
-				close(c.frameChan)
-				close(c.NotifyChan)
+				//close(c.frameChan)
+				//close(c.NotifyChan)
+				go func() {
+					time.Sleep(time.Second * 2)
+					_ = c.Close()
+					log.Println("reconnect", c.connect(context.Background()))
+				}()
 				return
 			}
 		case *frame.ReadyForQuery:

@@ -47,7 +47,8 @@ func convert(raw []byte, col frame.Column, location *time.Location) driver.Value
 		d = d.(time.Time).In(l).Add(-8 * time.Hour)
 		return d
 	case PgTypeTime:
-		return mustParse("15:04:05", PgTypeTime, raw)
+		t, _ := time.Parse(time.TimeOnly, string(raw))
+		return t
 	case PgTypeTimetz:
 		return mustParse("15:04:05-07", PgTypeTimetz, raw)
 	case PgTypeInt2, PgTypeInt4, PgTypeInt8:
@@ -56,8 +57,10 @@ func convert(raw []byte, col frame.Column, location *time.Location) driver.Value
 	case PgTypeFloat4, PgTypeFloat8, PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case PgTypeJson, PgTypeJsonb, PgTypeUuid, PgTypePoint:
+	case PgTypeUuid, PgTypePoint:
 		return string(raw)
+	case PgTypeJson, PgTypeJsonb:
+		return json.RawMessage(raw)
 	case PgTypeArrBool:
 		raw = bytes.ReplaceAll(raw, []byte("{"), []byte("["))
 		raw = bytes.ReplaceAll(raw, []byte("}"), []byte("]"))

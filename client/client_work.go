@@ -185,5 +185,6 @@ func (c *Client) IsInTransaction() bool {
 func (c *Client) Close() (err error) {
 	c.parameterMaps = nil
 	c.StatementMaps = nil
-	return
+	err = c.writer.Encode(frame.NewTermination())
+	return c.conn.Close()
 }
