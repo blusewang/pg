@@ -21,6 +21,13 @@
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-15.0-brightgreen.svg)
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-16.0-brightgreen.svg)
 
+## 特性
+
+* Scan() 时允许传入指针，完美对应数据库中的`null`
+* 所有查询全部自动`prepare`并缓存。
+* 支持`pg://`前缀的URI
+* 支持`Listen`式的异步消息订阅
+
 ## 安装
 
 	go get github.com/blusewang/pg/v2
@@ -31,15 +38,15 @@
 
 ```golang
 
-sql.Register("pq", pg.Driver{})
+sql.Register("pg", pg.Driver{})
 db, err := sql.Open("pg", "pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
 if err != nil {
-return err
+    return err
 }
 defer db.Close()
-rows, err := db.Query("select * from bluse where id>$1", 0)
+rows, err := db.Query("select * from table_name where id>$1", 0)
 if err != nil {
-return err
+    return err
 }
 ...
 
@@ -49,36 +56,32 @@ return err
 
 ```golang
     l, err := pg.NewListener("pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
-if err != nil {
-return
-}
-
-t.Log(l.Listen("channel_name"))
-go func() {
-time.Sleep(time.Minute)
-_ = l.Terminate()
-}()
-for {
-pid, channel, message, err := l.GetNotification()
-if err == io.EOF {
-t.Fatal(err)
-} else if err != nil {
-t.Fatal(err)
-}
-log.Println(pid, channel, message)
-}
+    if err != nil {
+        return
+    }
+    
+    if err := l.Listen("channel_name")); err != nil {
+        return        
+    }
+    go func() {
+        time.Sleep(time.Minute)
+        _ = l.Terminate()
+    }()
+    for {
+        pid, channel, message, err := l.GetNotification()
+        if err == io.EOF {
+            return err
+        } else if err != nil {
+            return err
+        }
+        log.Println(pid, channel, message)
+    }
 ```
 
 ## 文档
 
 更多的细节及使用示例，参见： <https://pkg.go.dev/github.com/blusewang/pg/v2>.
 
-## 特性
-
-* Scan() 时允许传入指针，完美对应数据库中的`null`
-* 所有查询全部自动`prepare`并缓存。
-* 支持`pg://`前缀的URI
-* 支持`Listen`式的异步消息订阅
 
 ### 配置要求
 
