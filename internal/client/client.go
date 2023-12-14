@@ -10,10 +10,8 @@ import (
 	"fmt"
 	"github.com/blusewang/pg/v2/internal/client/frame"
 	"github.com/blusewang/pg/v2/internal/client/scram"
-	"io"
 	"net"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -63,10 +61,6 @@ type Client struct {
 	status              frame.TransactionStatus // 业务状态
 	ConnectStatus       ConnectStatus           // 连接状态
 	notificationHandler NotificationHandler     // Listen 消息
-}
-
-func (c *Client) TestConn() ([]byte, error) {
-	return c.reader.Peek(1024)
 }
 
 func (c *Client) Connect(ctx context.Context, dsn DataSourceName) (err error) {
@@ -252,14 +246,14 @@ func (c *Client) Startup() (err error) {
 
 func (c *Client) QueryNoArgs(query string) (res SimpleQueryResponse, err error) {
 	if err = c.writer.Send(frame.NewSimpleQuery(query)); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 
 	for {
 		var f *frame.Data
 		f, err = c.reader.Receive()
 		if err != nil {
-			return res, c.handleError(err)
+			return res, c.handleIOError(err)
 		}
 		switch f.Type() {
 		case frame.TypeDataRow:
@@ -284,23 +278,23 @@ func (c *Client) QueryNoArgs(query string) (res SimpleQueryResponse, err error) 
 
 func (c *Client) Parse(name, query string) (res ParseResponse, err error) {
 	if err = c.writer.Buff(frame.NewParse(name, query)); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 	if err = c.writer.Buff(frame.NewDescribe(name)); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 	if err = c.writer.Buff(frame.NewSync()); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 	if err = c.writer.Flush(); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 
 	for {
 		var f *frame.Data
 		f, err = c.reader.Receive()
 		if err != nil {
-			return res, c.handleError(err)
+			return res, c.handleIOError(err)
 		}
 
 		switch f.Type() {
@@ -324,23 +318,23 @@ func (c *Client) Parse(name, query string) (res ParseResponse, err error) {
 
 func (c *Client) BindExec(name string, args []driver.Value) (res BindExecResponse, err error) {
 	if err = c.writer.Buff(frame.NewBind(name, args)); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 	if err = c.writer.Buff(frame.NewExecute()); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 	if err = c.writer.Buff(frame.NewSync()); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 	if err = c.writer.Flush(); err != nil {
-		return res, c.handleError(err)
+		return res, c.handleIOError(err)
 	}
 
 	for {
 		var f *frame.Data
 		f, err = c.reader.Receive()
 		if err != nil {
-			return res, c.handleError(err)
+			return res, c.handleIOError(err)
 		}
 		switch f.Type() {
 		case frame.TypeNoticeResponse:
@@ -365,19 +359,19 @@ func (c *Client) BindExec(name string, args []driver.Value) (res BindExecRespons
 
 func (c *Client) CloseParse(name string) (err error) {
 	if err = c.writer.Buff(frame.NewCloseStat(name)); err != nil {
-		return c.handleError(err)
+		return c.handleIOError(err)
 	}
 	if err = c.writer.Buff(frame.NewSync()); err != nil {
-		return c.handleError(err)
+		return c.handleIOError(err)
 	}
 	if err = c.writer.Flush(); err != nil {
-		return c.handleError(err)
+		return c.handleIOError(err)
 	}
 	for {
 		var d *frame.Data
 		d, err = c.reader.Receive()
 		if err != nil {
-			return c.handleError(err)
+			return c.handleIOError(err)
 		}
 		switch d.Type() {
 		case frame.TypeReadyForQuery:
@@ -410,7 +404,6 @@ func (c *Client) GetNotification() (pid uint32, channel, message string, err err
 
 		}
 	}
-
 }
 
 // CancelRequest 建立新连接，使用PID+口令从新连接中发出指令
@@ -427,7 +420,7 @@ func (c *Client) Terminate() (err error) {
 	return c.cn.Close()
 }
 
-func (c *Client) Close() (err error) {
+func (c *Client) CloseConn() (err error) {
 	return c.cn.Close()
 }
 
@@ -435,20 +428,9 @@ func (c *Client) IsInTransaction() bool {
 	return c.status == frame.TransactionStatusIdleInTransaction || c.status == frame.TransactionStatusInFailedTransaction
 }
 
-func (c *Client) handleError(err error) error {
-	if err == io.EOF {
-		c.ConnectStatus = ConnectStatusDisconnected
-		go func() {
-			recover()
-			_ = c.cn.Close()
-			if v, has := c.Dsn.Parameter["reconnect"]; has {
-				c.ConnectStatus = ConnectStatusConnecting
-				n, _ := strconv.Atoi(v)
-				time.Sleep(time.Second * time.Duration(n))
-				c.reconnect()
-			}
-		}()
-	}
+func (c *Client) handleIOError(err error) error {
+	c.ConnectStatus = ConnectStatusDisconnected
+	_ = c.cn.Close()
 	return err
 }
 
@@ -459,28 +441,9 @@ func (c *Client) handlePgError(d *frame.Data) error {
 	if e.Error.Fail == "FATAL" || e.Error.Fail == "PANIC" {
 		// 这两种错误需立即断开连接
 		go func() {
-			recover()
 			_ = c.cn.Close()
 			c.ConnectStatus = ConnectStatusDisconnected
-			if v, has := c.Dsn.Parameter["reconnect"]; has {
-				c.ConnectStatus = ConnectStatusConnecting
-				n, _ := strconv.Atoi(v)
-				time.Sleep(time.Second * time.Duration(n))
-				c.reconnect()
-			}
 		}()
 	}
 	return e.Error
-}
-
-func (c *Client) reconnect() {
-	if err := c.Connect(c.ctx, c.Dsn); err != nil {
-		return
-	}
-	if err := c.AutoSSL(); err != nil {
-		return
-	}
-	if err := c.Startup(); err != nil {
-		return
-	}
 }

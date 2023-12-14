@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/blusewang/pg/v2/internal/client/frame"
-	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -104,7 +103,7 @@ func (r *Rows) Next(dest []driver.Value) error {
 	} else if r.position < 0 || r.position >= rowsLen {
 		return fmt.Errorf("pg_rows rows length is %v but position is %v", rowsLen, r.position)
 	} else if r.position == rowsLen {
-		return io.EOF
+		return fmt.Errorf("pg_rows rows length is %v but position is %v", rowsLen, r.position)
 	}
 	for i, v := range r.rows[r.position].DataArr {
 		dest[i] = r.data2Value(v, r.columns.Columns[i])
