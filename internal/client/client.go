@@ -183,7 +183,7 @@ func (c *Client) Startup() (err error) {
 		}
 		switch d.Type() {
 		case frame.TypeError:
-			return c.handlePgError(d)
+			err = c.handlePgError(d)
 		case frame.TypeAuthRequest:
 			auth := frame.AuthRequest{Data: d}
 			switch auth.GetType() {
@@ -277,7 +277,7 @@ func (c *Client) QueryNoArgs(query string) (res SimpleQueryResponse, err error) 
 			c.status = frame.TransactionStatus(f.Payload()[0])
 			return
 		case frame.TypeError:
-			return res, c.handlePgError(f)
+			err = c.handlePgError(f)
 		}
 	}
 }
@@ -317,7 +317,7 @@ func (c *Client) Parse(name, query string) (res ParseResponse, err error) {
 			c.status = frame.TransactionStatus(f.Payload()[0])
 			return
 		case frame.TypeError:
-			return res, c.handlePgError(f)
+			err = c.handlePgError(f)
 		}
 	}
 }
@@ -358,7 +358,7 @@ func (c *Client) BindExec(name string, args []driver.Value) (res BindExecRespons
 			c.status = frame.TransactionStatus(f.Payload()[0])
 			return
 		case frame.TypeError:
-			return res, c.handlePgError(f)
+			err = c.handlePgError(f)
 		}
 	}
 }
@@ -384,7 +384,7 @@ func (c *Client) CloseParse(name string) (err error) {
 			c.status = frame.TransactionStatus(d.Payload()[0])
 			return
 		case frame.TypeError:
-			return c.handlePgError(d)
+			err = c.handlePgError(d)
 		}
 	}
 }
