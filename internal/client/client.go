@@ -183,7 +183,7 @@ func (c *Client) Startup() (err error) {
 		}
 		switch d.Type() {
 		case frame.TypeError:
-			err = c.handlePgError(d)
+			return c.handlePgError(d)
 		case frame.TypeAuthRequest:
 			auth := frame.AuthRequest{Data: d}
 			switch auth.GetType() {
@@ -424,6 +424,10 @@ func (c *Client) Terminate() (err error) {
 	defer func() {
 		c.ConnectStatus = ConnectStatusDisconnected
 	}()
+	return c.cn.Close()
+}
+
+func (c *Client) Close() (err error) {
 	return c.cn.Close()
 }
 

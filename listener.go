@@ -18,12 +18,15 @@ func NewListener(ctx context.Context, dsnString string) (Listener, error) {
 		return nil, err
 	}
 	if err = c.Connect(ctx, dsn); err != nil {
+		_ = c.Close()
 		return nil, err
 	}
 	if err = c.AutoSSL(); err != nil {
+		_ = c.Close()
 		return nil, err
 	}
 	if err = c.Startup(); err != nil {
+		_ = c.Close()
 		return nil, err
 	}
 	return c, nil

@@ -21,12 +21,15 @@ func NewConnect(ctx context.Context, dsn client.DataSourceName) (c Connect, err 
 		return
 	}
 	if err = c.client.Connect(ctx, dsn); err != nil {
+		_ = c.Close()
 		return
 	}
 	if err = c.client.AutoSSL(); err != nil {
+		_ = c.Close()
 		return
 	}
 	if err = c.client.Startup(); err != nil {
+		_ = c.Close()
 		return
 	}
 	c.statements = make(map[string]*Statement)
