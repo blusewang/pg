@@ -170,10 +170,9 @@ func (c *Client) Startup() (err error) {
 	// 认证
 	sc := scram.NewClient(sha256.New, c.Dsn.Parameter["user"], c.Dsn.Password)
 	for {
-		var d *frame.Data
-		d, err = c.reader.Receive()
-		if err != nil {
-			return
+		d, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return c.handleIOError(ioErr)
 		}
 		switch d.Type() {
 		case frame.TypeError:
@@ -250,10 +249,9 @@ func (c *Client) QueryNoArgs(query string) (res SimpleQueryResponse, err error) 
 	}
 
 	for {
-		var f *frame.Data
-		f, err = c.reader.Receive()
-		if err != nil {
-			return res, c.handleIOError(err)
+		f, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return res, c.handleIOError(ioErr)
 		}
 		switch f.Type() {
 		case frame.TypeDataRow:
@@ -291,10 +289,9 @@ func (c *Client) Parse(name, query string) (res ParseResponse, err error) {
 	}
 
 	for {
-		var f *frame.Data
-		f, err = c.reader.Receive()
-		if err != nil {
-			return res, c.handleIOError(err)
+		f, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return res, c.handleIOError(ioErr)
 		}
 
 		switch f.Type() {
@@ -331,10 +328,9 @@ func (c *Client) BindExec(name string, args []driver.Value) (res BindExecRespons
 	}
 
 	for {
-		var f *frame.Data
-		f, err = c.reader.Receive()
-		if err != nil {
-			return res, c.handleIOError(err)
+		f, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return res, c.handleIOError(ioErr)
 		}
 		switch f.Type() {
 		case frame.TypeNoticeResponse:
@@ -368,10 +364,9 @@ func (c *Client) CloseParse(name string) (err error) {
 		return c.handleIOError(err)
 	}
 	for {
-		var d *frame.Data
-		d, err = c.reader.Receive()
-		if err != nil {
-			return c.handleIOError(err)
+		d, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return c.handleIOError(ioErr)
 		}
 		switch d.Type() {
 		case frame.TypeReadyForQuery:
@@ -389,9 +384,8 @@ func (c *Client) Listen(channel string) (err error) {
 }
 
 func (c *Client) GetNotification() (pid uint32, channel, message string, err error) {
-	var d *frame.Data
-	d, err = c.reader.Receive()
-	if err != nil {
+	d, ioErr := c.reader.Receive()
+	if ioErr != nil {
 		return
 	}
 	for {
