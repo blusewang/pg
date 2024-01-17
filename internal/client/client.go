@@ -386,6 +386,7 @@ func (c *Client) Listen(channel string) (err error) {
 func (c *Client) GetNotification() (pid uint32, channel, message string, err error) {
 	d, ioErr := c.reader.Receive()
 	if ioErr != nil {
+		err = ioErr
 		return
 	}
 	for {
@@ -394,8 +395,10 @@ func (c *Client) GetNotification() (pid uint32, channel, message string, err err
 			n := frame.Notification{Data: d}
 			n.Decode()
 			return n.Pid, n.Condition, n.Text, nil
+		case frame.TypeError:
+			err = c.handlePgError(d)
+			return
 		default:
-
 		}
 	}
 }
