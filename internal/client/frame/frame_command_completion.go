@@ -19,9 +19,9 @@ func (cc *CommandCompletion) Affected() (n int) {
 	if cc == nil {
 		return
 	}
-	arr := strings.Split(string(cc.payload), " ")
-	if len(arr) == 2 {
-		n, _ = strconv.Atoi(arr[1])
+	arr := strings.Split(string(cc.payload[:len(cc.payload)-1]), " ")
+	if len(arr) > 1 {
+		n, _ = strconv.Atoi(arr[len(arr)-1])
 	}
 	return
 }

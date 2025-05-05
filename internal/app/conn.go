@@ -17,9 +17,6 @@ import (
 
 func NewConnect(ctx context.Context, dsn client.DataSourceName) (c Connect, err error) {
 	c.client = client.NewClient()
-	if err != nil {
-		return
-	}
 	if err = c.client.Connect(ctx, dsn); err != nil {
 		_ = c.Close()
 		return
@@ -125,12 +122,9 @@ func (c Connect) BeginTx(ctx context.Context, _ driver.TxOptions) (tx driver.Tx,
 func (c Connect) CheckNamedValue(nv *driver.NamedValue) error {
 	if nv.Value == nil {
 		return nil
-	} else {
-		var vi = reflect.ValueOf(nv.Value)
-		if vi.Kind() == reflect.Ptr && vi.IsNil() {
-			nv.Value = nil
-			return nil
-		}
+	} else if fmt.Sprintf("%T", nv.Value)[0] == '*' {
+		nv.Value = nil
+		return nil
 	}
 	switch nv.Value.(type) {
 

@@ -31,35 +31,40 @@ func (r *Rows) NextResultSet() error {
 func (r *Rows) ColumnTypeScanType(index int) reflect.Type {
 	switch frame.PgType(r.columns.Columns[index].TypeOid) {
 	case frame.PgTypeBool:
-		return reflect.TypeOf(false)
+		return reflect.TypeOf((*bool)(nil)).Elem()
 	case frame.PgTypeDate, frame.PgTypeTime, frame.PgTypeTimestamp, frame.PgTypeTimestamptz, frame.PgTypeTimetz:
-		return reflect.TypeOf(time.Time{})
+		return reflect.TypeOf((*time.Time)(nil)).Elem()
 	case frame.PgTypeInt2, frame.PgTypeInt4, frame.PgTypeInt8:
-		return reflect.TypeOf(int64(0))
+		return reflect.TypeOf((*int64)(nil)).Elem()
 	case frame.PgTypeFloat4, frame.PgTypeFloat8, frame.PgTypeNumeric:
-		return reflect.TypeOf(float64(0))
-	case frame.PgTypeText, frame.PgTypeVarchar, frame.PgTypeChar, frame.PgTypeUuid, frame.PgTypePoint:
-		return reflect.TypeOf("")
+		return reflect.TypeOf((*float64)(nil)).Elem()
+	case frame.PgTypeText, frame.PgTypeVarchar, frame.PgTypeChar, frame.PgTypeUuid:
+		return reflect.TypeOf((*string)(nil)).Elem()
+	case frame.PgTypePoint:
+		//return reflect.TypeOf("")
+		return reflect.TypeOf((*[]float64)(nil)).Elem()
 	case frame.PgTypeJson, frame.PgTypeJsonb:
-		return reflect.TypeOf(json.RawMessage{})
+		return reflect.TypeOf((*json.RawMessage)(nil)).Elem()
 	case frame.PgTypeBytea:
-		return reflect.TypeOf([]byte{})
+		return reflect.TypeOf((*[]byte)(nil)).Elem()
 
 	case frame.PgTypeArrBool:
-		return reflect.TypeOf([]bool{})
+		return reflect.TypeOf((*[]bool)(nil)).Elem()
 	case frame.PgTypeArrDate, frame.PgTypeArrTime, frame.PgTypeArrTimestamp, frame.PgTypeArrTimestamptz, frame.PgTypeArrTimetz:
-		return reflect.TypeOf([]time.Time{})
+		return reflect.TypeOf((*[]time.Time)(nil)).Elem()
 	case frame.PgTypeArrInt2, frame.PgTypeArrInt4, frame.PgTypeArrInt8:
-		return reflect.TypeOf([]int64{})
+		return reflect.TypeOf((*[]int64)(nil)).Elem()
 	case frame.PgTypeArrFloat4, frame.PgTypeArrFloat8, frame.PgTypeArrNumeric:
-		return reflect.TypeOf([]float64{})
+		return reflect.TypeOf((*[]float64)(nil)).Elem()
 	case frame.PgTypeArrVarchar, frame.PgTypeArrChar, frame.PgTypeArrText, frame.PgTypeArrUuid, frame.PgTypeArrJson, frame.PgTypeArrJsonb:
-		return reflect.TypeOf([]string{})
+		return reflect.TypeOf((*[]string)(nil)).Elem()
 	case frame.PgTypeArrBytea:
-		return reflect.TypeOf([][]byte{})
+		return reflect.TypeOf((*[][]byte)(nil)).Elem()
+	case frame.PgTypeRecord:
+		return reflect.TypeOf((*[]string)(nil)).Elem()
 
 	default:
-		return reflect.TypeOf("")
+		return reflect.TypeOf((*string)(nil)).Elem()
 	}
 }
 
@@ -130,7 +135,7 @@ func (r *Rows) data2Value(raw []byte, col frame.Column) interface{} {
 		return t.In(r.location).Add(-8 * time.Hour)
 	case frame.PgTypeDate:
 		t, _ := time.Parse(time.DateOnly, string(raw))
-		return t.In(r.location)
+		return t.In(r.location).Add(-8 * time.Hour)
 	case frame.PgTypeTime:
 		t, _ := time.Parse(time.TimeOnly, string(raw))
 		return t.In(r.location).Add(-8 * time.Hour)
@@ -144,8 +149,15 @@ func (r *Rows) data2Value(raw []byte, col frame.Column) interface{} {
 	case frame.PgTypeFloat4, frame.PgTypeFloat8, frame.PgTypeNumeric:
 		var f, _ = strconv.ParseFloat(string(raw), 64)
 		return f
-	case frame.PgTypeUuid, frame.PgTypePoint:
+	case frame.PgTypeUuid:
 		return string(raw)
+	case frame.PgTypePoint:
+		raw = bytes.ReplaceAll(raw, []byte("("), []byte("["))
+		raw = bytes.ReplaceAll(raw, []byte(")"), []byte("]"))
+		var arr []float64
+		_ = json.Unmarshal(raw, &arr)
+		return arr
+		//return string(raw)
 	case frame.PgTypeJson, frame.PgTypeJsonb:
 		return json.RawMessage(raw)
 	case frame.PgTypeArrBool:
@@ -169,7 +181,7 @@ func (r *Rows) data2Value(raw []byte, col frame.Column) interface{} {
 			}
 		}
 		return arr
-	case frame.PgTypeArrFloat4, frame.PgTypeArrFloat8:
+	case frame.PgTypeArrFloat4, frame.PgTypeArrFloat8, frame.PgTypeArrNumeric:
 		raw = bytes.ReplaceAll(raw, []byte("{"), []byte("["))
 		raw = bytes.ReplaceAll(raw, []byte("}"), []byte("]"))
 		if bytes.HasPrefix(raw, []byte("[[[")) {
@@ -190,6 +202,8 @@ func (r *Rows) data2Value(raw []byte, col frame.Column) interface{} {
 		var ss = pgStringArr{Raw: bytes.Runes(raw)}
 		ss.parse()
 		return ss.rs
+	case frame.PgTypeRecord:
+		return strings.Split(string(raw[1:len(raw)-1]), ",")
 	default:
 		return string(raw)
 	}
