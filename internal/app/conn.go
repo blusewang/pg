@@ -119,12 +119,19 @@ func (c Connect) BeginTx(ctx context.Context, _ driver.TxOptions) (tx driver.Tx,
 	return &Tx{client: c.client, ctx: ctx}, nil
 }
 
-func (c Connect) CheckNamedValue(nv *driver.NamedValue) error {
+func (c Connect) CheckNamedValue(nv *driver.NamedValue) (err error) {
 	if nv.Value == nil {
 		return nil
-	} else if fmt.Sprintf("%T", nv.Value)[0] == '*' {
-		nv.Value = nil
-		return nil
+	} else {
+		var vi = reflect.ValueOf(nv.Value)
+		if vi.Kind() == reflect.Ptr {
+			if vi.IsNil() {
+				nv.Value = nil
+				return nil
+			} else {
+				nv.Value = vi.Elem().Interface()
+			}
+		}
 	}
 	switch nv.Value.(type) {
 
@@ -234,9 +241,15 @@ func (c Connect) CheckNamedValue(nv *driver.NamedValue) error {
 	// time
 	case time.Time:
 	case *time.Time:
+		nv.Value = nv.Value.(time.Time).In(time.Local)
 
 	default:
-		nv.Value = fmt.Sprintf("%v", nv.Value)
+		// 支持driver.Valuer类型的自动转换
+		if v, has := nv.Value.(driver.Valuer); has {
+			nv.Value, err = v.Value()
+		} else {
+			nv.Value = fmt.Sprintf("%v", nv.Value)
+		}
 	}
 	return nil
 }

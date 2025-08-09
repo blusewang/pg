@@ -123,7 +123,7 @@ func (r *Rows) data2Value(raw []byte, col frame.Column) interface{} {
 	}
 	switch col.TypeOid {
 	case frame.PgTypeBool:
-		return string(raw)[0] == 't'
+		return raw[0] == 't'
 	case frame.PgTypeText, frame.PgTypeChar, frame.PgTypeVarchar:
 		return string(raw)
 
