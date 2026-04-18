@@ -6,11 +6,12 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"github.com/blusewang/pg/v2/internal/client/frame"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/blusewang/pg/v2/internal/client/frame"
 )
 
 type Rows struct {

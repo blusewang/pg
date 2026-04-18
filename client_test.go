@@ -125,7 +125,7 @@ func TestSql2(t *testing.T) {
 
 func loadDb(t *testing.T) (db *sql.DB) {
 	sql.Register("pq", Driver{})
-	db, err := sql.Open("pq", "pg://postgres:bluse.123@r:5432/core?sslmode=disable&application_name=development_w")
+	db, err := sql.Open("pq", "pg://postgres:bluse.123@debian:5432/core?host=/tmp&application_name=development_w")
 	if err != nil {
 		t.Fatal(err)
 	}

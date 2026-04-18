@@ -8,11 +8,12 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/blusewang/pg/v2/internal/client/frame"
-	"github.com/blusewang/pg/v2/internal/client/scram"
 	"net"
 	"os"
 	"time"
+
+	"github.com/blusewang/pg/v2/internal/client/frame"
+	"github.com/blusewang/pg/v2/internal/client/scram"
 )
 
 func NewClient() (c *Client) {

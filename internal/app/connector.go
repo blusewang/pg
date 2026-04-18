@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql/driver"
+
 	"github.com/blusewang/pg/v2/internal/client"
 )
 

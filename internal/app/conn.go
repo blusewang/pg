@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/blusewang/pg/v2/internal/client"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/blusewang/pg/v2/internal/client"
 )
 
 func NewConnect(ctx context.Context, dsn client.DataSourceName) (c Connect, err error) {
