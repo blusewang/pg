@@ -18,6 +18,11 @@ const (
 	TypeEmptyQueryResponse   = 'I'
 	TypeNoData               = 'n'
 	TypeNoticeResponse       = 'N'
+	TypeCopyInResponse       = 'G'
+	TypeCopyOutResponse      = 'H'
+	TypeCopyData             = 'd'
+	TypeCopyDone             = 'c'
+	TypeCopyFail             = 'f'
 )
 
 type TransactionStatus byte

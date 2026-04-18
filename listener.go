@@ -2,6 +2,8 @@ package pg
 
 import (
 	"context"
+	"io"
+
 	"github.com/blusewang/pg/v2/internal/client"
 )
 
@@ -9,6 +11,8 @@ type Listener interface {
 	Listen(channel string) error
 	GetNotification() (pid uint32, channel, message string, err error)
 	Terminate() error
+	CopyIn(sql string) (r io.Reader, err error)
+	CopyOut(sql string) (r io.Reader, err error)
 }
 
 func NewListener(ctx context.Context, dsnString string) (Listener, error) {

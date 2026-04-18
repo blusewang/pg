@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -403,6 +404,244 @@ func (c *Client) GetNotification() (pid uint32, channel, message string, err err
 		}
 	}
 }
+
+// CopyIn 实现 COPY FROM STDIN
+// sql: COPY table_name FROM STDIN WITH (FORMAT text)
+func (c *Client) CopyIn(sql string) (r io.Reader, err error) {
+	if err = c.writer.Send(frame.NewSimpleQuery(sql)); err != nil {
+		return nil, c.handleIOError(err)
+	}
+
+	for {
+		f, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return nil, c.handleIOError(ioErr)
+		}
+		switch f.Type() {
+		case frame.TypeCopyInResponse:
+			cir := frame.CopyInResponse{Data: f}
+			cir.Decode()
+			return &copyInReader{client: c}, nil
+		case frame.TypeError:
+			return nil, c.handlePgError(f)
+		case frame.TypeNoticeResponse:
+			n := frame.NoticeResponse{Error: frame.Error{Data: f}}
+			n.Decode()
+			n.Log()
+		default:
+			return nil, fmt.Errorf("unexpected frame type: %c", f.Type())
+		}
+	}
+}
+
+// copyInReader 实现 io.Reader 接口，用于 COPY FROM STDIN
+// 当调用者写入数据时，会将数据作为 CopyData 发送给 PostgreSQL
+// 当调用者关闭时，会发送 CopyDone 并等待完成
+
+type copyInReader struct {
+	client *Client
+	closed bool
+}
+
+func (r *copyInReader) Read(p []byte) (n int, err error) {
+	if r.closed {
+		return 0, io.EOF
+	}
+	// 这里只是提供一个读取接口，实际数据应该通过 Write 方法写入
+	// 但为了符合 io.Reader 接口，我们返回 EOF
+	return 0, io.EOF
+}
+
+func (r *copyInReader) Write(p []byte) (n int, err error) {
+	if r.closed {
+		return 0, io.EOF
+	}
+	if err = r.client.writer.Send(frame.NewCopyData(p)); err != nil {
+		return 0, r.client.handleIOError(err)
+	}
+	return len(p), nil
+}
+
+func (r *copyInReader) Close() error {
+	if r.closed {
+		return nil
+	}
+	r.closed = true
+	if err := r.client.writer.Send(frame.NewCopyDone()); err != nil {
+		return r.client.handleIOError(err)
+	}
+	// 等待 COPY 操作完成
+	for {
+		f, ioErr := r.client.reader.Receive()
+		if ioErr != nil {
+			return r.client.handleIOError(ioErr)
+		}
+		switch f.Type() {
+		case frame.TypeError:
+			return r.client.handlePgError(f)
+		case frame.TypeNoticeResponse:
+			n := frame.NoticeResponse{Error: frame.Error{Data: f}}
+			n.Decode()
+			n.Log()
+		case frame.TypeCommandCompletion:
+		case frame.TypeReadyForQuery:
+			r.client.status = frame.TransactionStatus(f.Payload()[0])
+			return nil
+		}
+	}
+}
+
+// 为了方便使用，我们也实现 io.WriteCloser 接口
+var _ io.WriteCloser = &copyInReader{}
+
+// CopyOut 实现 COPY TO STDOUT
+// sql: COPY table_name TO STDOUT WITH (FORMAT text)
+func (c *Client) CopyOut(sql string) (r io.Reader, err error) {
+	if err = c.writer.Send(frame.NewSimpleQuery(sql)); err != nil {
+		return nil, c.handleIOError(err)
+	}
+
+	for {
+		f, ioErr := c.reader.Receive()
+		if ioErr != nil {
+			return nil, c.handleIOError(ioErr)
+		}
+		switch f.Type() {
+		case frame.TypeCopyOutResponse:
+			cor := frame.CopyOutResponse{Data: f}
+			cor.Decode()
+			return &copyOutReader{client: c}, nil
+		case frame.TypeError:
+			return nil, c.handlePgError(f)
+		case frame.TypeNoticeResponse:
+			n := frame.NoticeResponse{Error: frame.Error{Data: f}}
+			n.Decode()
+			n.Log()
+		default:
+			return nil, fmt.Errorf("unexpected frame type: %c", f.Type())
+		}
+	}
+}
+
+// copyOutReader 实现 io.Reader 接口，用于 COPY TO STDOUT
+// 当调用者读取数据时，会从 PostgreSQL 接收 CopyData 并返回
+// 当读取完成时，会等待 COPY 操作完成
+
+type copyOutReader struct {
+	client   *Client
+	closed   bool
+	buf      []byte
+	bufIndex int
+}
+
+func (r *copyOutReader) Read(p []byte) (n int, err error) {
+	if r.closed {
+		return 0, io.EOF
+	}
+
+	// 先读取缓冲区中的数据
+	if len(r.buf) > r.bufIndex {
+		remaining := len(r.buf) - r.bufIndex
+		if remaining <= len(p) {
+			copy(p, r.buf[r.bufIndex:])
+			n = remaining
+			r.bufIndex = len(r.buf)
+			return n, nil
+		}
+		copy(p, r.buf[r.bufIndex:r.bufIndex+len(p)])
+		r.bufIndex += len(p)
+		return len(p), nil
+	}
+
+	for {
+		f, ioErr := r.client.reader.Receive()
+		if ioErr != nil {
+			return 0, r.client.handleIOError(ioErr)
+		}
+		switch f.Type() {
+		case frame.TypeCopyData:
+			data := f.Payload()
+			if len(data) == 0 {
+				continue
+			}
+			if len(data) <= len(p) {
+				copy(p, data)
+				return len(data), nil
+			}
+			// 数据大于缓冲区，保存剩余部分
+			copy(p, data[:len(p)])
+			r.buf = data
+			r.bufIndex = len(p)
+			return len(p), nil
+		case frame.TypeCopyDone:
+			r.closed = true
+			// 等待 ReadyForQuery
+			for {
+				f, ioErr := r.client.reader.Receive()
+				if ioErr != nil {
+					return 0, r.client.handleIOError(ioErr)
+				}
+				switch f.Type() {
+				case frame.TypeCommandCompletion:
+				case frame.TypeReadyForQuery:
+					r.client.status = frame.TransactionStatus(f.Payload()[0])
+					return 0, io.EOF
+				case frame.TypeError:
+					return 0, r.client.handlePgError(f)
+				case frame.TypeNoticeResponse:
+					n := frame.NoticeResponse{Error: frame.Error{Data: f}}
+					n.Decode()
+					n.Log()
+				}
+			}
+		case frame.TypeError:
+			return 0, r.client.handlePgError(f)
+		case frame.TypeNoticeResponse:
+			n := frame.NoticeResponse{Error: frame.Error{Data: f}}
+			n.Decode()
+			n.Log()
+		case frame.TypeCommandCompletion:
+		case frame.TypeReadyForQuery:
+			r.client.status = frame.TransactionStatus(f.Payload()[0])
+			r.closed = true
+			return 0, io.EOF
+		}
+	}
+}
+
+func (r *copyOutReader) Close() error {
+	if r.closed {
+		return nil
+	}
+	r.closed = true
+	r.buf = nil
+	r.bufIndex = 0
+	// 发送 CopyFail 以中止 COPY 操作
+	if err := r.client.writer.Send(frame.NewCopyFail("copy operation cancelled")); err != nil {
+		return r.client.handleIOError(err)
+	}
+	// 等待 ReadyForQuery
+	for {
+		f, ioErr := r.client.reader.Receive()
+		if ioErr != nil {
+			return r.client.handleIOError(ioErr)
+		}
+		switch f.Type() {
+		case frame.TypeError:
+			return r.client.handlePgError(f)
+		case frame.TypeNoticeResponse:
+			n := frame.NoticeResponse{Error: frame.Error{Data: f}}
+			n.Decode()
+			n.Log()
+		case frame.TypeReadyForQuery:
+			r.client.status = frame.TransactionStatus(f.Payload()[0])
+			return nil
+		}
+	}
+}
+
+// 为了方便使用，我们也实现 io.ReadCloser 接口
+var _ io.ReadCloser = &copyOutReader{}
 
 // CancelRequest 建立新连接，使用PID+口令从新连接中发出指令
 func (c *Client) CancelRequest() (err error) {

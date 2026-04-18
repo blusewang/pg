@@ -14,12 +14,7 @@
 #### PostgreSQL Version Support
 
 ![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-10.5-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-11.4-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-12.0-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-13.0-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-14.0-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-15.0-brightgreen.svg)
-![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-16.0-brightgreen.svg)
+![PostgreSQL version](https://img.shields.io/badge/PostgreSQL-18.3-brightgreen.svg)
 
 ## 特性
 
@@ -41,12 +36,12 @@
 sql.Register("pg", pg.Driver{})
 db, err := sql.Open("pg", "pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
 if err != nil {
-    return err
+return err
 }
 defer db.Close()
 rows, err := db.Query("select * from table_name where id>$1", 0)
 if err != nil {
-    return err
+return err
 }
 ...
 
@@ -56,32 +51,31 @@ if err != nil {
 
 ```golang
     l, err := pg.NewListener("pg://user:password@dbhost.yourdomain.com/database_name?application_name=app_name&sslmode=verify-full")
-    if err != nil {
-        return
-    }
-    
-    if err := l.Listen("channel_name")); err != nil {
-        return        
-    }
-    go func() {
-        time.Sleep(time.Minute)
-        _ = l.Terminate()
-    }()
-    for {
-        pid, channel, message, err := l.GetNotification()
-        if err == io.EOF {
-            return err
-        } else if err != nil {
-            return err
-        }
-        log.Println(pid, channel, message)
-    }
+if err != nil {
+return
+}
+
+if err := l.Listen("channel_name")); err != nil {
+return
+}
+go func () {
+time.Sleep(time.Minute)
+_ = l.Terminate()
+}()
+for {
+pid, channel, message, err := l.GetNotification()
+if err == io.EOF {
+return err
+} else if err != nil {
+return err
+}
+log.Println(pid, channel, message)
+}
 ```
 
 ## 文档
 
 更多的细节及使用示例，参见： <https://pkg.go.dev/github.com/blusewang/pg/v2>.
-
 
 ### 配置要求
 
@@ -100,12 +94,16 @@ if err != nil {
 | <ul><li>- [x] </li></ul> | 终止        | 必备                            |
 | <ul><li>- [x] </li></ul> | SSL会话加密   | 远程安全                          |
 | <ul><li>- [x] </li></ul> | 异步        | listen/notify                 |
+| <ul><li>- [x] </li></ul> | copy      | 支持                            |
 
 暂不支持`SCRAM-SHA-256-PLUS`。当`pg_hba.conf`使用：
+
 ```conf
 hostssl all             all             0.0.0.0/0               scram-sha-256 clientcert=verify-full
 ```
+
 时，Server会发类型为`SCRAM-SHA-256-PLUS`类型的请求。此时客户端将自动降级至`SCRAM-SHA-256`。
+
 ## License
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fblusewang%2Fpg.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fblusewang%2Fpg?ref=badge_large)

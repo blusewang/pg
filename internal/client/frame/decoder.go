@@ -73,6 +73,12 @@ func detect(f *Data) (af Frame) {
 		af = &NoData{Data: f}
 	case 'N':
 		af = &NoticeResponse{Error{Data: f}}
+	case 'G':
+		af = &CopyInResponse{Data: f}
+	case 'H':
+		af = &CopyOutResponse{Data: f}
+	case 'd':
+		af = &CopyData{Data: f}
 	default:
 		af = f
 	}

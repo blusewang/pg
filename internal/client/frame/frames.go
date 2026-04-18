@@ -143,3 +143,29 @@ type CopyCompletion struct {
 type CopyFail struct {
 	*Data
 }
+
+func NewCopyFail(message string) *Data {
+	f := &Data{
+		Name:    'f',
+		payload: []byte{},
+	}
+	f.writeString(message)
+	return f
+}
+
+func NewCopyDone() *Data {
+	return &Data{
+		Name:    'c',
+		length:  4,
+		payload: []byte{},
+	}
+}
+
+func NewCopyData(data []byte) *Data {
+	f := &Data{
+		Name:    'd',
+		payload: []byte{},
+	}
+	f.writeBytes(data)
+	return f
+}
